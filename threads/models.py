@@ -14,10 +14,9 @@ class Thread(models.Model):
 
     def to_json(self):
         return {
-            'id': self.id,
-            'title': self.title,
-            'comments': [comment.to_json()
-                         for comment in self.comment_set.all()]
+            "id": self.id,
+            "title": self.title,
+            "comments": [comment.to_json() for comment in self.comment_set.all()],
         }
 
 
@@ -26,10 +25,7 @@ class Author(models.Model):
     provider_id = models.CharField(max_length=200)
 
     def to_json(self):
-        return {
-            'provider_id': self.provider_id,
-            'user_id': self.user_id
-        }
+        return {"provider_id": self.provider_id, "user_id": self.user_id}
 
 
 class Comment(models.Model):
@@ -41,8 +37,8 @@ class Comment(models.Model):
 
     def to_json(self):
         return {
-            'id': self.id,
-            'content': self.content,
-            'created_at': self.created_at.isoformat(),
-            'author': self.author.to_json()
+            "id": self.id,
+            "content": self.content,
+            "created_at": self.created_at.isoformat(),
+            "author": self.author.to_json(),
         }
