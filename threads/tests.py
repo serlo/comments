@@ -1,9 +1,8 @@
 from django.test import TestCase
-from threads.models import Author, Entity, Thread, Comment
+from .models import Author, Entity, Thread, Comment
+from . import tasks
 from django.urls import reverse
 import json
-
-# Create your tests here.
 
 
 def create_thread(**kwargs):
@@ -145,60 +144,44 @@ class ThreadIndexViewTests(TestCase):
 
 class CreateThreadView(TestCase):
     def test_create_thread(self):
-        url = reverse(
-            "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "123"}
+        thread = tasks.create_thread(
+            {
+                "author": {"provider_id": "serlo", "user_id": "456"},
+                "entity": {"provider_id": "serlo", "id": "123"},
+                "title": "Antwort auf Frage XY",
+                "content": "Ich habe folgende Frage",
+            }
         )
-        response = self.client.post(
-            url,
-            json.dumps(
-                {
-                    "title": "Antwort auf Frage XY",
-                    "author": {"provider_id": "serlo", "user_id": "456"},
-                    "content": "Ich habe folgende Frage",
-                }
-            ),
-            content_type="application/json",
+        entity = Entity.objects.get(
+            provider_id="serlo", entity_id="123"
         )
-        self.assertEqual(response.status_code, 200)
-
-        entity = Entity.objects.get(provider_id="serlo", entity_id="123")
         threads = list(entity.thread_set.all())
         self.assertEqual(len(threads), 1)
         self.assertEqual(threads[0].title, "Antwort auf Frage XY")
         self.assertEqual(
-            list(threads[0].comment_set.all())[0].content, "Ich habe folgende Frage"
+            list(threads[0].comment_set.all())[
+                0].content, "Ich habe folgende Frage"
         )
 
     def test_create_entity_once(self):
-        url = reverse(
-            "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "123"}
+        tasks.create_thread(
+            {
+                "author": {"provider_id": "serlo", "user_id": "456"},
+                "entity": {"provider_id": "serlo", "id": "123"},
+                "title": "Antwort auf Frage XY",
+                "content": "Ich habe folgende Frage",
+            }
         )
-        self.client.post(
-            url,
-            json.dumps(
-                {
-                    "title": "Antwort auf Frage XY",
-                    "author": {"provider_id": "serlo", "user_id": "456"},
-                    "content": "Ich habe folgende Frage",
-                }
-            ),
-            content_type="application/json",
-        )
-
-        self.client.post(
-            url,
-            json.dumps(
-                {
-                    "title": "Antwort auf Frage XY",
-                    "author": {"provider_id": "serlo", "user_id": "456"},
-                    "content": "Ich habe folgende Frage",
-                }
-            ),
-            content_type="application/json",
+        tasks.create_thread(
+            {
+                "author": {"provider_id": "serlo", "user_id": "456"},
+                "entity": {"provider_id": "serlo", "id": "123"},
+                "title": "Antwort auf Frage XY",
+                "content": "Ich habe folgende Frage",
+            }
         )
 
         Entity.objects.get(provider_id="serlo", entity_id="123")
-
         Author.objects.get(provider_id="serlo", user_id="456")
 
 
@@ -212,22 +195,17 @@ class CreateCommentView(TestCase):
             user_id="456",
             content="Ich habe folgende Frage",
         )
-        url = reverse("threads:create_comment", kwargs={"thread_id": thread.id})
-        response = self.client.post(
-            url,
-            json.dumps(
-                {
-                    "author": {"provider_id": "serlo", "user_id": "456"},
-                    "content": "Ich habe folgende Frage",
-                }
-            ),
-            content_type="application/json",
+        tasks.create_comment(
+            {
+                "thread_id": thread.id,
+                "author": {"provider_id": "serlo", "user_id": "456"},
+                "content": "Ich habe folgende Frage",
+            }
         )
 
-        self.assertEqual(response.status_code, 200)
+        # self.assertEqual(response.status_code, 200)
 
         thread_found = Thread.objects.get(pk=thread.id)
         comments = list(thread_found.comment_set.all())
         self.assertEqual(len(comments), 2)
         self.assertEqual(comments[0].content, "Ich habe folgende Frage")
-
