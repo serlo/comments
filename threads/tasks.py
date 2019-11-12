@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
 from threads.models import Entity, Author, Thread, Comment
+from datetime import datetime
 
 
 def create_comment(payload):
@@ -10,7 +11,10 @@ def create_comment(payload):
     )
     thread = Thread.objects.get(pk=payload["thread_id"])
     comment = Comment.objects.create(
-        author=author, content=payload["content"], thread=thread
+        author=author,
+        content=payload["content"],
+        thread=thread,
+        created_at=datetime.fromisoformat(payload["created_at"]),
     )
     return comment
 
@@ -25,6 +29,9 @@ def create_thread(payload):
     )
     thread = Thread.objects.create(title=payload["title"], entity=entity)
     comment = Comment.objects.create(
-        author=author, content=payload["content"], thread=thread
+        author=author,
+        content=payload["content"],
+        thread=thread,
+        created_at=datetime.fromisoformat(payload["created_at"]),
     )
     return thread

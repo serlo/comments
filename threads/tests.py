@@ -3,6 +3,7 @@ from .models import Author, Entity, Thread, Comment
 from . import tasks
 from django.urls import reverse
 import json
+from datetime import datetime, timezone
 
 
 def create_thread(**kwargs):
@@ -14,7 +15,10 @@ def create_thread(**kwargs):
     )
     thread = Thread.objects.create(title=kwargs["title"], entity=entity)
     comment = Comment.objects.create(
-        author=author, content=kwargs["content"], thread=thread
+        author=author,
+        content=kwargs["content"],
+        thread=thread,
+        created_at=datetime.fromisoformat(kwargs["created_at"]),
     )
     return thread
 
@@ -24,7 +28,10 @@ def add_comment(**kwargs):
         user_id=kwargs["user_id"], provider_id=kwargs["user_provider_id"]
     )
     comment = Comment.objects.create(
-        author=author, content=kwargs["content"], thread=kwargs["thread"]
+        author=author,
+        content=kwargs["content"],
+        thread=kwargs["thread"],
+        created_at=datetime.fromisoformat(kwargs["created_at"]),
     )
     return comment
 
@@ -46,6 +53,7 @@ class ThreadIndexViewTests(TestCase):
             user_provider_id="serlo",
             user_id="456",
             content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
         )
 
         test_thread_comments = list(test_thread.comment_set.all())
@@ -59,16 +67,16 @@ class ThreadIndexViewTests(TestCase):
             response.content,
             [
                 {
-                    "id": test_thread.id,
+                    "id": str(test_thread.id),
                     "title": "Antwort auf Frage XY",
                     "comments": [
                         {
-                            "id": test_thread_comments[0].id,
+                            "id": str(test_thread_comments[0].id),
                             "content": "Ich habe folgende Frage",
                             "author": {"user_id": "456", "provider_id": "serlo"},
-                            "created_at": test_thread_comments[
-                                0
-                            ].created_at.isoformat(),
+                            "created_at": test_thread_comments[0]
+                            .created_at.astimezone(tz=timezone.utc)
+                            .isoformat(),
                         }
                     ],
                 }
@@ -83,6 +91,7 @@ class ThreadIndexViewTests(TestCase):
             user_provider_id="serlo",
             user_id="456",
             content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
         )
         url = reverse(
             "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "234"}
@@ -100,6 +109,7 @@ class ThreadIndexViewTests(TestCase):
             user_provider_id="serlo",
             user_id="456",
             content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
         )
 
         comment = add_comment(
@@ -107,6 +117,7 @@ class ThreadIndexViewTests(TestCase):
             user_id="101",
             content="Ich habe weitere Frage",
             thread=test_thread,
+            created_at="2019-11-11 11:11:11+02:00",
         )
         url = reverse(
             "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "123"}
@@ -119,22 +130,24 @@ class ThreadIndexViewTests(TestCase):
             response.content,
             [
                 {
-                    "id": test_thread.id,
+                    "id": str(test_thread.id),
                     "title": "Antwort auf Frage XY",
                     "comments": [
                         {
-                            "id": test_thread_comments[0].id,
+                            "id": str(test_thread_comments[0].id),
                             "content": "Ich habe folgende Frage",
                             "author": {"user_id": "456", "provider_id": "serlo"},
-                            "created_at": test_thread_comments[
-                                0
-                            ].created_at.isoformat(),
+                            "created_at": test_thread_comments[0]
+                            .created_at.astimezone(tz=timezone.utc)
+                            .isoformat(),
                         },
                         {
-                            "id": comment.id,
+                            "id": str(comment.id),
                             "content": "Ich habe weitere Frage",
                             "author": {"user_id": "101", "provider_id": "serlo"},
-                            "created_at": comment.created_at.isoformat(),
+                            "created_at": comment.created_at.astimezone(
+                                tz=timezone.utc
+                            ).isoformat(),
                         },
                     ],
                 }
@@ -150,17 +163,15 @@ class CreateThreadView(TestCase):
                 "entity": {"provider_id": "serlo", "id": "123"},
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",
+                "created_at": "2019-11-11 11:11:11+02:00",
             }
         )
-        entity = Entity.objects.get(
-            provider_id="serlo", entity_id="123"
-        )
+        entity = Entity.objects.get(provider_id="serlo", entity_id="123")
         threads = list(entity.thread_set.all())
         self.assertEqual(len(threads), 1)
         self.assertEqual(threads[0].title, "Antwort auf Frage XY")
         self.assertEqual(
-            list(threads[0].comment_set.all())[
-                0].content, "Ich habe folgende Frage"
+            list(threads[0].comment_set.all())[0].content, "Ich habe folgende Frage"
         )
 
     def test_create_entity_once(self):
@@ -170,6 +181,7 @@ class CreateThreadView(TestCase):
                 "entity": {"provider_id": "serlo", "id": "123"},
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",
+                "created_at": "2019-11-11 11:11:11+02:00",
             }
         )
         tasks.create_thread(
@@ -178,6 +190,7 @@ class CreateThreadView(TestCase):
                 "entity": {"provider_id": "serlo", "id": "123"},
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",
+                "created_at": "2019-11-11 11:11:11+02:00",
             }
         )
 
@@ -194,12 +207,14 @@ class CreateCommentView(TestCase):
             user_provider_id="serlo",
             user_id="456",
             content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
         )
         tasks.create_comment(
             {
                 "thread_id": thread.id,
                 "author": {"provider_id": "serlo", "user_id": "456"},
                 "content": "Ich habe folgende Frage",
+                "created_at": "2019-11-11 11:11:11+02:00",
             }
         )
 

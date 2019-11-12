@@ -1,4 +1,5 @@
 from django.db import models
+import uuid
 
 # Create your models here.
 
@@ -11,6 +12,7 @@ class Entity(models.Model):
 class Thread(models.Model):
     title = models.CharField(max_length=200)
     entity = models.ForeignKey(Entity, on_delete=models.CASCADE, null=True)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     def to_json(self):
         return {
@@ -29,11 +31,11 @@ class Author(models.Model):
 
 
 class Comment(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField()
     content = models.TextField()
     author = models.ForeignKey(Author, on_delete=models.CASCADE)
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
     def to_json(self):
         return {
