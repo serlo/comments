@@ -17,7 +17,7 @@ def main():
         delete_comment,
         delete_thread,
         archive_thread,
-
+    )
 
     consumer = Consumer(
         {
