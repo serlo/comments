@@ -11,6 +11,7 @@ class Entity(models.Model):
 
 class Thread(models.Model):
     title = models.CharField(max_length=200)
+    archived = models.BooleanField(default=False)
     entity = models.ForeignKey(Entity, on_delete=models.CASCADE, null=True)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 

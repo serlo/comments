@@ -40,3 +40,15 @@ def create_thread(payload):
 def delete_thread(payload):
     thread_found = Thread.objects.get(pk=payload["thread_id"])
     thread_found.delete()
+
+
+def delete_comment(payload):
+    comment_found = Comment.objects.get(pk=payload["comment_id"])
+    comment_found.delete()
+
+
+def archive_thread(payload):
+    thread_found = Thread.objects.get(pk=payload["thread_id"])
+    thread_found.archived = True
+    thread_found.save()
+    return thread_found

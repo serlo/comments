@@ -11,7 +11,13 @@ django.setup()
 
 def main():
     from threads.models import Entity
-    from threads.tasks import create_comment, create_thread
+    from threads.tasks import (
+        create_comment,
+        create_thread,
+        delete_comment,
+        delete_thread,
+        archive_thread,
+
 
     consumer = Consumer(
         {
@@ -55,6 +61,12 @@ def main():
 
                     if data["type"] == "delete-thread":
                         delete_thread(data["payload"])
+
+                    if data["type"] == "delete-comment":
+                        delete_comment(data["payload"])
+
+                    if data["type"] == "archive-thread":
+                        thread = archive_thread(data["payload"])
                     producer.produce(
                         "comments", json.dumps(data), callback=delivery_report
                     )

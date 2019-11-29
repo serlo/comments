@@ -249,3 +249,51 @@ class DeleteThreadView(TestCase):
             {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
         )
 
+
+class DeleteCommentView(TestCase):
+    def test_delete_existing_comment(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        comment = add_comment(
+            user_provider_id="serlo",
+            user_id="101",
+            content="Ich habe weitere Frage",
+            thread=thread,
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        tasks.delete_comment({"comment_id": comment.id})
+
+        self.assertEqual(Comment.objects.count(), 1)
+
+    def test_delete_nonexisting_comment(self):
+        self.assertRaises(
+            Comment.DoesNotExist,
+            tasks.delete_comment,
+            {"comment_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
+        )
+
+
+class ArchiveThreadView(TestCase):
+    def test_archive_thread(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+        thread = tasks.archive_thread({"thread_id": thread.id})
+
+        self.assertEqual(thread.archived, True)
+
