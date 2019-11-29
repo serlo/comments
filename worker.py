@@ -52,6 +52,9 @@ def main():
                     if data["type"] == "create-thread":
                         thread = create_thread(data["payload"])
                         data["payload"]["id"] = thread.id
+
+                    if data["type"] == "delete-thread":
+                        delete_thread(data["payload"])
                     producer.produce(
                         "comments", json.dumps(data), callback=delivery_report
                     )

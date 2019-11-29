@@ -35,3 +35,8 @@ def create_thread(payload):
         created_at=datetime.fromisoformat(payload["created_at"]),
     )
     return thread
+
+
+def delete_thread(payload):
+    thread_found = Thread.objects.get(pk=payload["thread_id"])
+    thread_found.delete()

@@ -224,3 +224,28 @@ class CreateCommentView(TestCase):
         comments = list(thread_found.comment_set.all())
         self.assertEqual(len(comments), 2)
         self.assertEqual(comments[0].content, "Ich habe folgende Frage")
+
+
+class DeleteThreadView(TestCase):
+    def test_delete_existing_thread(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        tasks.delete_thread({"thread_id": thread.id})
+
+        self.assertEqual(Thread.objects.count(), 0)
+
+    def test_delete_nonexisting_thread(self):
+        self.assertRaises(
+            Thread.DoesNotExist,
+            tasks.delete_thread,
+            {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
+        )
+
