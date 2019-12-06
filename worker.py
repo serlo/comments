@@ -10,14 +10,7 @@ django.setup()
 
 
 def main():
-    from threads.models import Entity
-    from threads.tasks import (
-        create_comment,
-        create_thread,
-        delete_comment,
-        delete_thread,
-        archive_thread,
-    )
+    from threads.worker import execute_message
 
     consumer = Consumer(
         {
@@ -50,23 +43,7 @@ def main():
             else:
                 try:
                     data = json.loads(msg.value())
-
-                    if data["type"] == "create-comment":
-                        comment = create_comment(data["payload"])
-                        data["payload"]["id"] = comment.id
-
-                    if data["type"] == "create-thread":
-                        thread = create_thread(data["payload"])
-                        data["payload"]["id"] = thread.id
-
-                    if data["type"] == "delete-thread":
-                        delete_thread(data["payload"])
-
-                    if data["type"] == "delete-comment":
-                        delete_comment(data["payload"])
-
-                    if data["type"] == "archive-thread":
-                        thread = archive_thread(data["payload"])
+                    data = execute_message(data)
                     producer.produce(
                         "comments", json.dumps(data), callback=delivery_report
                     )

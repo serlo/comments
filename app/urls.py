@@ -20,8 +20,7 @@ import os
 
 urlpatterns = [
     path('threads/', include('threads.urls')),
-    path('admin/', admin.site.urls)
+    path('admin/', admin.site.urls),
+    # TODO: only load in dev
+    path('pact/', include('pact.urls'))
 ]
-
-if os.getenv('PACT'):
-    urlpatterns += path('pact/', include('pact.urls')),
