@@ -4,6 +4,7 @@
   "license": "Apache-2.0",
   "author": "Serlo Education e.V.",
   "scripts": {
+    "format": "docker-compose run --rm format",
     "test": "docker-compose exec server python manage.py test",
     "test:pact": "jest"
   },

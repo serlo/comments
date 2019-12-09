@@ -25,4 +25,4 @@ def execute_message(data):
     if data["type"] == "archive-thread":
         archive_thread(data["payload"])
         return data
-    raise Exception('Invalid message')
+    raise Exception("Invalid message")

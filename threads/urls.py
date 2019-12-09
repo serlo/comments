@@ -4,9 +4,5 @@ from . import views
 
 app_name = "threads"
 urlpatterns = [
-    path(
-        "<str:content_provider_id>/<str:entity_id>/",
-        views.index,
-        name="index",
-    )
+    path("<str:content_provider_id>/<str:entity_id>/", views.index, name="index",)
 ]

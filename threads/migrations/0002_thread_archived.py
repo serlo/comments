@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('threads', '0001_squashed_0005_auto_20191112_1305'),
+        ("threads", "0001_squashed_0005_auto_20191112_1305"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='thread',
-            name='archived',
+            model_name="thread",
+            name="archived",
             field=models.BooleanField(default=False),
         ),
     ]

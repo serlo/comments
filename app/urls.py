@@ -19,8 +19,8 @@ from django.urls import path, include
 import os
 
 urlpatterns = [
-    path('threads/', include('threads.urls')),
-    path('admin/', admin.site.urls),
+    path("threads/", include("threads.urls")),
+    path("admin/", admin.site.urls),
     # TODO: only load in dev
-    path('pact/', include('pact.urls'))
+    path("pact/", include("pact.urls")),
 ]

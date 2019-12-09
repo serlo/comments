@@ -5,15 +5,25 @@ services:
     environment:
       - POSTGRES_PASSWORD=secret
   server:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
     volumes:
       - .:/usr/src/app
     ports:
       - "8000:8000"
     depends_on:
       - migrate
+  format:
+    build:
+      context: .
+      dockerfile: docker/format/Dockerfile
+    volumes:
+      - .:/usr/src/app
   migrate:
-    build: .
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
     command: ["python", "manage.py", "migrate"]
     volumes:
       - .:/usr/src/app

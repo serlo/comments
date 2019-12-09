@@ -296,4 +296,3 @@ class ArchiveThreadView(TestCase):
         thread = tasks.archive_thread({"thread_id": thread.id})
 
         self.assertEqual(thread.archived, True)
-
