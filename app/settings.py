@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 """
 
 import os
+from socket import gethostname, gethostbyname
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -26,6 +27,7 @@ SECRET_KEY = "u052ixbr8xoew*b3q*ozn4dg(ud#x!kuz-wfa=7%m49wj_ud7o"
 DEBUG = True
 
 ALLOWED_HOSTS = [
+    '10.211.55.8',
     "localhost",
     "server",
 ]
@@ -83,7 +85,7 @@ DATABASES = {
         "NAME": "postgres",
         "USER": "postgres",
         "PASSWORD": "secret",
-        "HOST": "db",
+        "HOST": "commenting-system-postgresql-headless",
         "PORT": "",
     },
 }
@@ -114,7 +116,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/

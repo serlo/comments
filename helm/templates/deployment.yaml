@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app: {{ template "commenting-system.name" . }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "commenting-system.name" . }}
+      release: {{ .Release.Name }}
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "commenting-system.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      initContainers:
+        - name: init-database
+          image: busybox:1.28
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          command: ['sh', '-c', 'until nslookup commenting-system-postgresql-headless; do echo waiting for database; sleep 2; done']
+        - name: init-migrate
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          command: ['python', 'manage.py', 'migrate']
+      containers:
+        - name: commenting-system
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.internalPort }}
+          resources:
+            {{- toYaml .Values.resources | indent 12 }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
