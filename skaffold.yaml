@@ -4,11 +4,16 @@ build:
   tagPolicy:
     sha256: {}
   artifacts:
-    - image: eu.gcr.io/serlo-shared/commenting-system
+    - image: eu.gcr.io/serlo-shared/comments
+      docker:
+        dockerfile: ./docker/server/Dockerfile
 deploy:
   helm:
     releases:
-      - name: commenting-system
+      - name: comments
         chartPath: helm
         values:
-          image: eu.gcr.io/serlo-shared/commenting-system
+          image: eu.gcr.io/serlo-shared/comments
+        setValues:
+          host: comments.serlo.localhost
+          postgresql.enabled: true

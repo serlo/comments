@@ -1,31 +1,26 @@
 {{- if .Values.ingress.enabled -}}
-{{- $serviceName := include "commenting-system.fullname" . -}}
-{{- $servicePort := .Values.service.externalPort -}}
+{{- $serviceName := include "comments.fullname" . -}}
+{{- $servicePort := .Values.service.port -}}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
-  name: {{ template "commenting-system.fullname" . }}
+  name: {{ template "comments.fullname" . }}
   labels:
-    app: {{ template "commenting-system.name" . }}
-    chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    {{ include "comments.labels" . | indent 4 }}
   annotations:
     {{- range $key, $value := .Values.ingress.annotations }}
       {{ $key }}: {{ $value | quote }}
     {{- end }}
 spec:
   rules:
-    {{- if .Values.ingress.hosts }}
-    {{- range $host := .Values.ingress.hosts }}
-    - host: {{ $host }}
+    {{- if .Values.host }}
+    - host: {{ .Values.host }}
       http:
         paths:
           - path: /
             backend:
               serviceName: {{ $serviceName }}
               servicePort: {{ $servicePort }}
-    {{- end -}}
     {{- else }}
     - http:
         paths:
