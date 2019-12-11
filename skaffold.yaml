@@ -3,11 +3,20 @@ kind: Config
 build:
   tagPolicy:
     sha256: {}
+  local:
+    push: false
   artifacts:
     - image: eu.gcr.io/serlo-shared/comments
       docker:
         dockerfile: ./docker/server/Dockerfile
+      sync:
+        infer:
+          - app/**/*
+          - pact/**/*
+          - threads/**/*
+          - manage.py
 deploy:
+  kubeContext: minikube
   helm:
     releases:
       - name: comments
