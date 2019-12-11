@@ -4,6 +4,7 @@
   "license": "Apache-2.0",
   "author": "Serlo Education e.V.",
   "scripts": {
+    "start": "skaffold dev",
     "format": "npm-run-all format:*",
     "format:prettier": "yarn _prettier --write",
     "format:py": "docker-compose run --rm format",
