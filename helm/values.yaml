@@ -1,0 +1,48 @@
+image:
+  # Image repository
+  repository: nil
+  # Image tag
+  tag: nil
+  # Image pull policy
+  pullPolicy: IfNotPresent
+# Hostname for comments service. Also used for ingress (if enabled)
+host: nil
+# Number of replicas to run
+replicaCount: 1
+
+postgresql:
+  # Enable or disable PostgreSQL dependency. Refer to [stable/postgresql](https://github.com/helm/charts/tree/master/stable/postgresql) for more information
+  enabled: false
+  image:
+    tag: 9.6
+  postgresqlDatabase: postgres
+  postgresqlUsername: postgres
+  postgresqlPassword: postgres
+  service:
+    port: 5432
+
+# PostgreSQL settings when using externally provisioned PostgreSQL
+externalPostgresql:
+  host: nil
+  port: nil
+  database: nil
+  username: nil
+  password: nil
+
+service:
+  # The service type to use
+  type: ClusterIP
+  # The service port
+  port: 8000
+
+# Pod resource requests and limits
+resources: {}
+
+ingress:
+  # If true, an ingress is created
+  enabled: true
+  # Annotations for the ingress
+  annotations:
+     kubernetes.io/ingress.class: nginx
+  # A list of IngressTLS items
+  tls:

@@ -9,8 +9,10 @@ https://docs.djangoproject.com/en/2.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.2/ref/settings/
 """
-
+import json
 import os
+
+from socket import gethostname, gethostbyname
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,11 +27,7 @@ SECRET_KEY = "u052ixbr8xoew*b3q*ozn4dg(ud#x!kuz-wfa=7%m49wj_ud7o"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "server",
-]
-
+ALLOWED_HOSTS = [os.getenv("HOST")]
 
 # Application definition
 
@@ -80,11 +78,11 @@ WSGI_APPLICATION = "app.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "postgres",
-        "USER": "postgres",
-        "PASSWORD": "secret",
-        "HOST": "db",
-        "PORT": "",
+        "HOST": os.getenv("DATABASE_HOST"),
+        "NAME": os.getenv("DATABASE_NAME"),
+        "USER": os.getenv("DATABASE_USER"),
+        "PASSWORD": os.getenv("DATABASE_PASSWORD"),
+        "PORT": os.getenv("DATABASE_PORT"),
     },
 }
 
@@ -114,7 +112,6 @@ USE_I18N = True
 USE_L10N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.2/howto/static-files/

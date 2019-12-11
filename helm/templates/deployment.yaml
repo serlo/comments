@@ -1,0 +1,77 @@
+{{/*
+Environment variables used by containers. Includes configuration used by Django
+*/}}
+{{- define "comments.deployment.env" }}
+- name: DATABASE_HOST
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Release.Name }}-database
+      key: host
+- name: DATABASE_PORT
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Release.Name }}-database
+      key: port
+- name: DATABASE_NAME
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Release.Name }}-database
+      key: name
+- name: DATABASE_USER
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Release.Name }}-database
+      key: user
+- name: DATABASE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ .Release.Name }}-database
+      key: password
+- name: HOST
+  value: {{ .Values.host | quote }}
+{{- end }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{ include "comments.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ template "comments.name" . }}
+      release: {{ .Release.Name }}
+  replicas: {{ .Values.replicaCount }}
+  template:
+    metadata:
+      labels:
+        {{ include "comments.labels" . | indent 8 }}
+    spec:
+      initContainers:
+        - name: init-database
+          image: 'postgres:{{.Values.postgresql.image.tag}}'
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          command: ['sh', '-c', 'until pg_isready --host $DATABASE_HOST --port $DATABASE_PORT; do echo waiting for database; sleep 2; done']
+          env:
+            {{ include "comments.deployment.env" . | indent 12 }}
+        - name: init-migrate
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          command: ['python', 'manage.py', 'migrate']
+          env:
+            {{ include "comments.deployment.env" . | indent 12 }}
+      containers:
+        - name: server
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.pullPolicy }}
+          ports:
+            - containerPort: 8000
+          resources:
+            {{- toYaml .Values.resources | indent 12 }}
+          env:
+            {{ include "comments.deployment.env" . | indent 12 }}
+      {{- if .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | indent 8 }}
+      {{- end }}
