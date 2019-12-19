@@ -13,17 +13,23 @@ def create_thread(**kwargs):
     entity, _ = Entity.objects.get_or_create(
         entity_id=kwargs["entity_id"], provider_id=kwargs["content_provider_id"]
     )
-    thread = Thread.objects.create(title=kwargs["title"], entity=entity)
+    thread = Thread.objects.create(
+        title=kwargs["title"],
+        entity=entity,
+        created_at=datetime.fromisoformat(kwargs["created_at"]),
+        updated_at=datetime.fromisoformat(kwargs["created_at"]),
+    )
     comment = Comment.objects.create(
         author=author,
         content=kwargs["content"],
         thread=thread,
         created_at=datetime.fromisoformat(kwargs["created_at"]),
+        updated_at=datetime.fromisoformat(kwargs["created_at"]),
     )
     return thread
 
 
-def add_comment(**kwargs):
+def create_comment(**kwargs):
     author = Author.objects.create(
         user_id=kwargs["user_id"], provider_id=kwargs["user_provider_id"]
     )
@@ -32,7 +38,9 @@ def add_comment(**kwargs):
         content=kwargs["content"],
         thread=kwargs["thread"],
         created_at=datetime.fromisoformat(kwargs["created_at"]),
+        updated_at=datetime.fromisoformat(kwargs["created_at"]),
     )
+    comment.thread.updated_at = kwargs["created_at"]
     return comment
 
 
@@ -77,8 +85,17 @@ class ThreadIndexViewTests(TestCase):
                             "created_at": test_thread_comments[0]
                             .created_at.astimezone(tz=timezone.utc)
                             .isoformat(),
+                            "updated_at": test_thread_comments[0]
+                            .updated_at.astimezone(tz=timezone.utc)
+                            .isoformat(),
                         }
                     ],
+                    "created_at": test_thread.created_at.astimezone(
+                        tz=timezone.utc
+                    ).isoformat(),
+                    "updated_at": test_thread.updated_at.astimezone(
+                        tz=timezone.utc
+                    ).isoformat(),
                 }
             ],
         )
@@ -100,7 +117,7 @@ class ThreadIndexViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, [])
 
-    def test_add_comment(self):
+    def test_create_comment(self):
         self.maxDiff = 1000
         test_thread = create_thread(
             title="Antwort auf Frage XY",
@@ -112,7 +129,7 @@ class ThreadIndexViewTests(TestCase):
             created_at="2019-11-11 11:11:11+02:00",
         )
 
-        comment = add_comment(
+        comment = create_comment(
             user_provider_id="serlo",
             user_id="101",
             content="Ich habe weitere Frage",
@@ -140,6 +157,9 @@ class ThreadIndexViewTests(TestCase):
                             "created_at": test_thread_comments[0]
                             .created_at.astimezone(tz=timezone.utc)
                             .isoformat(),
+                            "updated_at": test_thread_comments[0]
+                            .updated_at.astimezone(tz=timezone.utc)
+                            .isoformat(),
                         },
                         {
                             "id": str(comment.id),
@@ -148,8 +168,17 @@ class ThreadIndexViewTests(TestCase):
                             "created_at": comment.created_at.astimezone(
                                 tz=timezone.utc
                             ).isoformat(),
+                            "updated_at": comment.updated_at.astimezone(
+                                tz=timezone.utc
+                            ).isoformat(),
                         },
                     ],
+                    "created_at": test_thread_comments[0]
+                    .created_at.astimezone(tz=timezone.utc)
+                    .isoformat(),
+                    "updated_at": test_thread_comments[1]
+                    .created_at.astimezone(tz=timezone.utc)
+                    .isoformat(),
                 }
             ],
         )
@@ -262,7 +291,7 @@ class DeleteCommentView(TestCase):
             created_at="2019-11-11 11:11:11+02:00",
         )
 
-        comment = add_comment(
+        comment = create_comment(
             user_provider_id="serlo",
             user_id="101",
             content="Ich habe weitere Frage",
@@ -296,3 +325,150 @@ class ArchiveThreadView(TestCase):
         thread = tasks.archive_thread({"thread_id": thread.id})
 
         self.assertEqual(thread.archived, True)
+
+    def test_unarchive_thread(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+        thread.archived = True
+        thread = tasks.unarchive_thread({"thread_id": thread.id})
+
+        self.assertEqual(thread.archived, False)
+
+
+class EditThreadView(TestCase):
+    def test_edit_comment(self):
+        test_thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        comment = create_comment(
+            user_provider_id="serlo",
+            user_id="101",
+            content="Ich habe weitere Frage",
+            thread=test_thread,
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        edited_comment = tasks.edit_comment(
+            {
+                "comment_id": comment.id,
+                "author": {"provider_id": "serlo", "user_id": "101"},
+                "content": "Ich habe keine Frage",
+                "created_at": "2019-11-11 11:11:12+02:00",
+            }
+        )
+
+        self.assertEqual(edited_comment.content, "Ich habe keine Frage")
+
+
+class TrashThreadView(TestCase):
+    def test_trash_thread(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+        trashed_thread = tasks.trash_thread({"thread_id": thread.id})
+
+        self.assertEqual(trashed_thread.trashed, True)
+
+    def test_restore_thread(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+        thread.trashed = True
+        restored_thread = tasks.restore_thread({"thread_id": thread.id})
+
+        self.assertEqual(restored_thread.trashed, False)
+
+
+class TrashCommentView(TestCase):
+    def test_trash_comment(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+        comment = create_comment(
+            user_provider_id="serlo",
+            user_id="101",
+            content="Ich habe weitere Frage",
+            thread=thread,
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        trashed_comment = tasks.trash_comment({"comment_id": comment.id})
+
+        self.assertEqual(trashed_comment.trashed, True)
+
+    def test_restore_comment(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        comment = create_comment(
+            user_provider_id="serlo",
+            user_id="101",
+            content="Ich habe weitere Frage",
+            thread=thread,
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        comment.trashed = True
+        restored_comment = tasks.restore_comment({"comment_id": comment.id})
+
+        self.assertEqual(restored_comment.trashed, False)
+
+
+class ReplaceUserView(TestCase):
+    def test_replace_user(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        new_user_id = "789"
+        comments = list(thread.comment_set.all())
+        author = tasks.replace_user(
+            {"anonymous_id": comments[0].author.user_id, "user_id": new_user_id}
+        )
+
+        self.assertEqual(author.user_id, new_user_id)
