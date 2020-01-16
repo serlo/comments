@@ -1,3 +1,5 @@
+from typing import Any, TypedDict
+
 from .tasks import (
     create_comment,
     create_thread,
@@ -14,7 +16,12 @@ from .tasks import (
 )
 
 
-def execute_message(data):
+class Message(TypedDict):
+    type: str
+    payload: Any
+
+
+def execute_message(data: Message) -> Message:
     if data["type"] == "create-comment":
         comment = create_comment(data["payload"])
         data["payload"]["id"] = comment.id

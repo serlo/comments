@@ -1,10 +1,8 @@
-from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
-from threads.models import Entity, Author, Thread, Comment
-import json
+from django.http import HttpRequest, JsonResponse
+from threads.models import Entity
 
 
-def index(request, content_provider_id, entity_id):
+def index(_: HttpRequest, content_provider_id: str, entity_id: str) -> JsonResponse:
     try:
         entity = Entity.objects.get(
             provider_id=content_provider_id, entity_id=entity_id

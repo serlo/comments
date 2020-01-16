@@ -1,480 +1,343 @@
+from datetime import timezone, datetime
+from typing import List, Any
+
 from django.test import TestCase
-from .models import Author, Entity, Thread, Comment
-from . import tasks
 from django.urls import reverse
-import json
-from datetime import datetime, timezone
+
+from . import fixtures
+from . import models
+from . import tasks
 
 
-def create_thread(**kwargs):
-    author, _ = Author.objects.get_or_create(
-        user_id=kwargs["user_id"], provider_id=kwargs["user_provider_id"]
-    )
-    entity, _ = Entity.objects.get_or_create(
-        entity_id=kwargs["entity_id"], provider_id=kwargs["content_provider_id"]
-    )
-    thread = Thread.objects.create(
-        title=kwargs["title"],
-        entity=entity,
-        created_at=datetime.fromisoformat(kwargs["created_at"]),
-        updated_at=datetime.fromisoformat(kwargs["created_at"]),
-    )
-    comment = Comment.objects.create(
-        author=author,
-        content=kwargs["content"],
-        thread=thread,
-        created_at=datetime.fromisoformat(kwargs["created_at"]),
-        updated_at=datetime.fromisoformat(kwargs["created_at"]),
-    )
-    return thread
-
-
-def create_comment(**kwargs):
-    author = Author.objects.create(
-        user_id=kwargs["user_id"], provider_id=kwargs["user_provider_id"]
-    )
-    comment = Comment.objects.create(
-        author=author,
-        content=kwargs["content"],
-        thread=kwargs["thread"],
-        created_at=datetime.fromisoformat(kwargs["created_at"]),
-        updated_at=datetime.fromisoformat(kwargs["created_at"]),
-    )
-    comment.thread.updated_at = kwargs["created_at"]
-    return comment
+def normalize_timestamp(timestamp: str) -> str:
+    dt = datetime.fromisoformat(timestamp)
+    return dt.astimezone(tz=timezone.utc).isoformat(timespec="seconds")
 
 
 class ThreadIndexViewTests(TestCase):
-    def test_no_thread(self):
-        url = reverse(
-            "threads:index", args=({"content_provider_id": "serlo", "entity_id": "123"})
-        )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, [])
+    def test_no_threads(self) -> None:
+        self.assertResponseForEntity(fixtures.entity_payloads[0], [])
 
-    def test_thread(self):
-        test_thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-
-        test_thread_comments = list(test_thread.comment_set.all())
-
-        url = reverse(
-            "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "123"}
-        )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(
-            response.content,
+    def test_one_thread(self) -> None:
+        payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(payload)
+        comments = list(thread.comment_set.all())
+        self.assertResponseForEntity(
+            payload["entity"],
             [
                 {
-                    "id": str(test_thread.id),
-                    "title": "Antwort auf Frage XY",
+                    "id": str(thread.id),
+                    "title": payload["title"],
                     "comments": [
                         {
-                            "id": str(test_thread_comments[0].id),
-                            "content": "Ich habe folgende Frage",
-                            "author": {"user_id": "456", "provider_id": "serlo"},
-                            "created_at": test_thread_comments[0]
-                            .created_at.astimezone(tz=timezone.utc)
-                            .isoformat(),
-                            "updated_at": test_thread_comments[0]
-                            .updated_at.astimezone(tz=timezone.utc)
-                            .isoformat(),
+                            "id": str(comments[0].id),
+                            "content": payload["content"],
+                            "author": payload["author"],
+                            "created_at": normalize_timestamp(payload["created_at"]),
+                            "updated_at": normalize_timestamp(payload["created_at"]),
                         }
                     ],
-                    "created_at": test_thread.created_at.astimezone(
-                        tz=timezone.utc
-                    ).isoformat(),
-                    "updated_at": test_thread.updated_at.astimezone(
-                        tz=timezone.utc
-                    ).isoformat(),
+                    "created_at": normalize_timestamp(payload["created_at"]),
+                    "updated_at": normalize_timestamp(payload["created_at"]),
                 }
             ],
         )
 
-    def test_different_entity(self):
-        test_thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="789",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        url = reverse(
-            "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "234"}
-        )
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(response.content, [])
+    def test_different_entity(self) -> None:
+        tasks.create_thread(fixtures.create_thread_payloads[0])
+        self.assertResponseForEntity(fixtures.entity_payloads[1], [])
 
-    def test_create_comment(self):
-        self.maxDiff = 1000
-        test_thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-
-        comment = create_comment(
-            user_provider_id="serlo",
-            user_id="101",
-            content="Ich habe weitere Frage",
-            thread=test_thread,
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        url = reverse(
-            "threads:index", kwargs={"content_provider_id": "serlo", "entity_id": "123"}
-        )
-
-        test_thread_comments = list(test_thread.comment_set.all())
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 200)
-        self.assertJSONEqual(
-            response.content,
+    def test_two_comments(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        comment_payload: tasks.CreateCommentPayload = {
+            "author": fixtures.author_payloads[1],
+            "content": "Ich habe eine weitere Frage",
+            "thread_id": str(thread.id),
+            "created_at": "2019-11-11 11:11:11+02:00",
+        }
+        comment = tasks.create_comment(comment_payload)
+        comments = list(thread.comment_set.all())
+        self.assertResponseForEntity(
+            thread_payload["entity"],
             [
                 {
-                    "id": str(test_thread.id),
-                    "title": "Antwort auf Frage XY",
+                    "id": str(thread.id),
+                    "title": thread_payload["title"],
                     "comments": [
                         {
-                            "id": str(test_thread_comments[0].id),
-                            "content": "Ich habe folgende Frage",
-                            "author": {"user_id": "456", "provider_id": "serlo"},
-                            "created_at": test_thread_comments[0]
-                            .created_at.astimezone(tz=timezone.utc)
-                            .isoformat(),
-                            "updated_at": test_thread_comments[0]
-                            .updated_at.astimezone(tz=timezone.utc)
-                            .isoformat(),
+                            "id": str(comments[0].id),
+                            "content": thread_payload["content"],
+                            "author": thread_payload["author"],
+                            "created_at": normalize_timestamp(
+                                thread_payload["created_at"]
+                            ),
+                            "updated_at": normalize_timestamp(
+                                thread_payload["created_at"]
+                            ),
                         },
                         {
                             "id": str(comment.id),
-                            "content": "Ich habe weitere Frage",
-                            "author": {"user_id": "101", "provider_id": "serlo"},
-                            "created_at": comment.created_at.astimezone(
-                                tz=timezone.utc
-                            ).isoformat(),
-                            "updated_at": comment.updated_at.astimezone(
-                                tz=timezone.utc
-                            ).isoformat(),
+                            "content": comment_payload["content"],
+                            "author": comment_payload["author"],
+                            "created_at": normalize_timestamp(
+                                comment_payload["created_at"]
+                            ),
+                            "updated_at": normalize_timestamp(
+                                comment_payload["created_at"]
+                            ),
                         },
                     ],
-                    "created_at": test_thread_comments[0]
-                    .created_at.astimezone(tz=timezone.utc)
-                    .isoformat(),
-                    "updated_at": test_thread_comments[1]
-                    .created_at.astimezone(tz=timezone.utc)
-                    .isoformat(),
+                    "created_at": normalize_timestamp(thread_payload["created_at"]),
+                    "updated_at": normalize_timestamp(comment_payload["created_at"]),
                 }
             ],
         )
 
+    def assertResponseForEntity(
+        self, entity: tasks.EntityPayload, threads: Any
+    ) -> None:
+        url = reverse(
+            "threads:index",
+            kwargs={
+                "content_provider_id": entity["provider_id"],
+                "entity_id": entity["id"],
+            },
+        )
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, threads)
+
 
 class CreateThreadTaskTests(TestCase):
-    def test_create_thread(self):
-        thread = tasks.create_thread(
-            {
-                "author": {"provider_id": "serlo", "user_id": "456"},
-                "entity": {"provider_id": "serlo", "id": "123"},
-                "title": "Antwort auf Frage XY",
-                "content": "Ich habe folgende Frage",
-                "created_at": "2019-11-11 11:11:11+02:00",
-            }
+    def test_create_thread(self) -> None:
+        payload = fixtures.create_thread_payloads[0]
+        tasks.create_thread(payload)
+        entity = models.Entity.objects.get(
+            provider_id=payload["entity"]["provider_id"],
+            entity_id=payload["entity"]["id"],
         )
-        entity = Entity.objects.get(provider_id="serlo", entity_id="123")
         threads = list(entity.thread_set.all())
         self.assertEqual(len(threads), 1)
-        self.assertEqual(threads[0].title, "Antwort auf Frage XY")
+        self.assertEqual(threads[0].title, payload["title"])
         self.assertEqual(
-            list(threads[0].comment_set.all())[0].content, "Ich habe folgende Frage"
+            list(threads[0].comment_set.all())[0].content, payload["content"]
         )
 
-    def test_create_entity_once(self):
-        tasks.create_thread(
-            {
-                "author": {"provider_id": "serlo", "user_id": "456"},
-                "entity": {"provider_id": "serlo", "id": "123"},
-                "title": "Antwort auf Frage XY",
-                "content": "Ich habe folgende Frage",
-                "created_at": "2019-11-11 11:11:11+02:00",
-            }
+    def test_create_entity_and_author_only_once(self) -> None:
+        payload = fixtures.create_thread_payloads[0]
+        tasks.create_thread(payload)
+        tasks.create_thread(payload)
+        models.Author.objects.get(**payload["author"])
+        models.Entity.objects.get(
+            provider_id=payload["entity"]["provider_id"],
+            entity_id=payload["entity"]["id"],
         )
-        tasks.create_thread(
-            {
-                "author": {"provider_id": "serlo", "user_id": "456"},
-                "entity": {"provider_id": "serlo", "id": "123"},
-                "title": "Antwort auf Frage XY",
-                "content": "Ich habe folgende Frage",
-                "created_at": "2019-11-11 11:11:11+02:00",
-            }
-        )
-
-        Entity.objects.get(provider_id="serlo", entity_id="123")
-        Author.objects.get(provider_id="serlo", user_id="456")
 
 
 class CreateCommentTaskTests(TestCase):
-    def test_create_comment(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        tasks.create_comment(
-            {
-                "thread_id": thread.id,
-                "author": {"provider_id": "serlo", "user_id": "456"},
-                "content": "Ich habe folgende Frage",
-                "created_at": "2019-11-11 11:11:11+02:00",
-            }
-        )
-
-        # self.assertEqual(response.status_code, 200)
-
-        thread_found = Thread.objects.get(pk=thread.id)
-        comments = list(thread_found.comment_set.all())
+    def test_create_comment(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        comment_payload: tasks.CreateCommentPayload = {
+            "author": fixtures.author_payloads[1],
+            "content": "Ich habe eine weitere Frage",
+            "thread_id": str(thread.id),
+            "created_at": "2019-11-11 11:11:11+02:00",
+        }
+        tasks.create_comment(comment_payload)
+        thread = models.Thread.objects.get(pk=thread.id)
+        comments = list(thread.comment_set.all())
         self.assertEqual(len(comments), 2)
-        self.assertEqual(comments[0].content, "Ich habe folgende Frage")
+        self.assertEqual(comments[1].content, comment_payload["content"])
 
 
 class DeleteThreadTaskTests(TestCase):
-    def test_delete_existing_thread(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
+    def test_delete_existing_thread(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        tasks.delete_thread({"thread_id": str(thread.id)})
+        self.assertEqual(models.Thread.objects.count(), 0)
 
-        tasks.delete_thread({"thread_id": thread.id})
-
-        self.assertEqual(Thread.objects.count(), 0)
-
-    def test_delete_nonexisting_thread(self):
+    def test_delete_nonexisting_thread(self) -> None:
         self.assertRaises(
-            Thread.DoesNotExist,
+            models.Thread.DoesNotExist,
             tasks.delete_thread,
             {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
         )
 
 
 class DeleteCommentTaskTests(TestCase):
-    def test_delete_existing_comment(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
+    def test_delete_existing_comment(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        comment_payload: tasks.CreateCommentPayload = {
+            "author": fixtures.author_payloads[1],
+            "content": "Ich habe eine weitere Frage",
+            "thread_id": str(thread.id),
+            "created_at": "2019-11-11 11:11:11+02:00",
+        }
+        comment = tasks.create_comment(comment_payload)
+        tasks.delete_comment({"comment_id": str(comment.id)})
+        self.assertEqual(models.Comment.objects.count(), 1)
 
-        comment = create_comment(
-            user_provider_id="serlo",
-            user_id="101",
-            content="Ich habe weitere Frage",
-            thread=thread,
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-
-        tasks.delete_comment({"comment_id": comment.id})
-
-        self.assertEqual(Comment.objects.count(), 1)
-
-    def test_delete_nonexisting_comment(self):
+    def test_delete_nonexisting_comment(self) -> None:
         self.assertRaises(
-            Comment.DoesNotExist,
+            models.Comment.DoesNotExist,
             tasks.delete_comment,
             {"comment_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
         )
 
 
 class ArchiveThreadView(TestCase):
-    def test_archive_thread(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        thread = tasks.archive_thread({"thread_id": thread.id})
-
+    def test_archive_thread(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        thread = tasks.archive_thread({"thread_id": str(thread.id)})
+        thread = models.Thread.objects.get(pk=thread.id)
         self.assertEqual(thread.archived, True)
 
-    def test_unarchive_thread(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
+    def test_archive_nonexisting_thread(self) -> None:
+        self.assertRaises(
+            models.Thread.DoesNotExist,
+            tasks.archive_thread,
+            {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
         )
-        thread.archived = True
-        thread = tasks.unarchive_thread({"thread_id": thread.id})
 
+
+class UnarchiveThreadView(TestCase):
+    def test_unarchive_thread(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        thread = tasks.archive_thread({"thread_id": str(thread.id)})
+        thread = tasks.unarchive_thread({"thread_id": str(thread.id)})
+        thread = models.Thread.objects.get(pk=thread.id)
         self.assertEqual(thread.archived, False)
+
+    def test_unarchive_nonexisting_thread(self) -> None:
+        self.assertRaises(
+            models.Thread.DoesNotExist,
+            tasks.unarchive_thread,
+            {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
+        )
 
 
 class EditCommentTaskTests(TestCase):
-    def test_edit_comment(self):
-        test_thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
+    def test_edit_comment(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        comment_payload: tasks.CreateCommentPayload = {
+            "author": fixtures.author_payloads[1],
+            "content": "Ich habe eine weitere Frage",
+            "thread_id": str(thread.id),
+            "created_at": "2019-11-11 11:11:11+02:00",
+        }
+        comment = tasks.create_comment(comment_payload)
+        edit_comment_payload: tasks.EditCommentPayload = {
+            "comment_id": str(comment.id),
+            "content": "Ich habe doch keine Frage",
+            "created_at": "2019-11-11 11:11:12+02:00",
+        }
+        tasks.edit_comment(edit_comment_payload)
+        thread = models.Thread.objects.get(pk=thread.id)
+        comment = models.Comment.objects.get(pk=comment.id)
+        self.assertEqual(comment.content, edit_comment_payload["content"])
+        self.assertEqual(
+            comment.updated_at,
+            tasks.datetime_from_timestamp(edit_comment_payload["created_at"]),
+        )
+        self.assertEqual(
+            thread.updated_at,
+            tasks.datetime_from_timestamp(edit_comment_payload["created_at"]),
         )
 
-        comment = create_comment(
-            user_provider_id="serlo",
-            user_id="101",
-            content="Ich habe weitere Frage",
-            thread=test_thread,
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-
-        edited_comment = tasks.edit_comment(
+    def test_edit_nonexisting_comment(self) -> None:
+        self.assertRaises(
+            models.Comment.DoesNotExist,
+            tasks.edit_comment,
             {
-                "comment_id": comment.id,
-                "author": {"provider_id": "serlo", "user_id": "101"},
-                "content": "Ich habe keine Frage",
+                "comment_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9",
+                "content": "Ich habe doch keine Frage",
                 "created_at": "2019-11-11 11:11:12+02:00",
-            }
+            },
         )
-
-        self.assertEqual(edited_comment.content, "Ich habe keine Frage")
-        self.assertEqual(edited_comment.updated_at, "2019-11-11 11:11:12+02:00")
 
 
 class TrashThreadTaskTests(TestCase):
-    def test_trash_thread(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        trashed_thread = tasks.trash_thread({"thread_id": thread.id})
+    def test_trash_thread(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        thread = tasks.trash_thread({"thread_id": str(thread.id)})
+        thread = models.Thread.objects.get(pk=thread.id)
+        self.assertEqual(thread.trashed, True)
 
-        self.assertEqual(trashed_thread.trashed, True)
+    def test_unarchive_nonexisting_thread(self) -> None:
+        self.assertRaises(
+            models.Thread.DoesNotExist,
+            tasks.trash_thread,
+            {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
+        )
 
 
 class RestoreThreadTaskTests(TestCase):
-    def test_restore_thread(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        thread.trashed = True
-        restored_thread = tasks.restore_thread({"thread_id": thread.id})
+    def test_restore_thread(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        thread = tasks.trash_thread({"thread_id": str(thread.id)})
+        thread = tasks.restore_thread({"thread_id": str(thread.id)})
+        thread = models.Thread.objects.get(pk=thread.id)
+        self.assertEqual(thread.trashed, False)
 
-        self.assertEqual(restored_thread.trashed, False)
+    def test_restore_nonexisting_thread(self) -> None:
+        self.assertRaises(
+            models.Thread.DoesNotExist,
+            tasks.restore_thread,
+            {"thread_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
+        )
 
 
 class TrashCommentTaskTests(TestCase):
-    def test_trash_comment(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-        comment = create_comment(
-            user_provider_id="serlo",
-            user_id="101",
-            content="Ich habe weitere Frage",
-            thread=thread,
-            created_at="2019-11-11 11:11:11+02:00",
-        )
+    def test_trash_comment(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        comment = list(thread.comment_set.all())[0]
+        comment = tasks.trash_comment({"comment_id": str(comment.id)})
+        comment = models.Comment.objects.get(pk=comment.id)
+        self.assertEqual(comment.trashed, True)
 
-        trashed_comment = tasks.trash_comment({"comment_id": comment.id})
-
-        self.assertEqual(trashed_comment.trashed, True)
+    def test_trash_nonexisting_comment(self) -> None:
+        self.assertRaises(
+            models.Comment.DoesNotExist,
+            tasks.trash_comment,
+            {"comment_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
+        )
 
 
 class RestoreCommentTaskTests(TestCase):
-    def test_restore_comment(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
+    def test_restore_comment(self) -> None:
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        comment = list(thread.comment_set.all())[0]
+        comment = tasks.trash_comment({"comment_id": str(comment.id)})
+        comment = tasks.restore_comment({"comment_id": str(comment.id)})
+        comment = models.Comment.objects.get(pk=comment.id)
+        self.assertEqual(comment.trashed, False)
+
+    def test_restore_nonexisting_comment(self) -> None:
+        self.assertRaises(
+            models.Comment.DoesNotExist,
+            tasks.restore_comment,
+            {"comment_id": "c64ff5cb-2a21-47e5-89f7-55fad67c0eb9"},
         )
-
-        comment = create_comment(
-            user_provider_id="serlo",
-            user_id="101",
-            content="Ich habe weitere Frage",
-            thread=thread,
-            created_at="2019-11-11 11:11:11+02:00",
-        )
-
-        comment.trashed = True
-        restored_comment = tasks.restore_comment({"comment_id": comment.id})
-
-        self.assertEqual(restored_comment.trashed, False)
 
 
 class ReplaceUserTaskTest(TestCase):
-    def test_replace_user(self):
-        thread = create_thread(
-            title="Antwort auf Frage XY",
-            entity_id="123",
-            content_provider_id="serlo",
-            user_provider_id="serlo-guest",
-            user_id="456",
-            content="Ich habe folgende Frage",
-            created_at="2019-11-11 11:11:11+02:00",
-        )
+    def test_replace_user(self) -> None:
+        tasks.create_thread(fixtures.create_thread_payloads[0])
         author = tasks.replace_user(
-            {
-                "old": {"provider_id": "serlo-guest", "user_id": "456"},
-                "new": {"provider_id": "serlo", "user_id": "567"},
-            }
+            {"old": fixtures.author_payloads[0], "new": fixtures.author_payloads[1],}
         )
-        self.assertEqual(author.provider_id, "serlo")
-        self.assertEqual(author.user_id, "567")
+        author = models.Author.objects.get(pk=author.id)
+        self.assertEqual(author.provider_id, fixtures.author_payloads[1]["provider_id"])
+        self.assertEqual(author.user_id, fixtures.author_payloads[1]["user_id"])
         self.assertEqual(author.comment_set.count(), 1)
+
+    def test_replace_nonexisting_user(self) -> None:
+        self.assertRaises(
+            models.Author.DoesNotExist,
+            tasks.replace_user,
+            {"old": fixtures.author_payloads[0], "new": fixtures.author_payloads[1],},
+        )
