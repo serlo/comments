@@ -184,7 +184,7 @@ class ThreadIndexViewTests(TestCase):
         )
 
 
-class CreateThreadView(TestCase):
+class CreateThreadTaskTests(TestCase):
     def test_create_thread(self):
         thread = tasks.create_thread(
             {
@@ -227,7 +227,7 @@ class CreateThreadView(TestCase):
         Author.objects.get(provider_id="serlo", user_id="456")
 
 
-class CreateCommentView(TestCase):
+class CreateCommentTaskTests(TestCase):
     def test_create_comment(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -255,7 +255,7 @@ class CreateCommentView(TestCase):
         self.assertEqual(comments[0].content, "Ich habe folgende Frage")
 
 
-class DeleteThreadView(TestCase):
+class DeleteThreadTaskTests(TestCase):
     def test_delete_existing_thread(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -279,7 +279,7 @@ class DeleteThreadView(TestCase):
         )
 
 
-class DeleteCommentView(TestCase):
+class DeleteCommentTaskTests(TestCase):
     def test_delete_existing_comment(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -342,7 +342,7 @@ class ArchiveThreadView(TestCase):
         self.assertEqual(thread.archived, False)
 
 
-class EditThreadView(TestCase):
+class EditCommentTaskTests(TestCase):
     def test_edit_comment(self):
         test_thread = create_thread(
             title="Antwort auf Frage XY",
@@ -374,7 +374,7 @@ class EditThreadView(TestCase):
         self.assertEqual(edited_comment.content, "Ich habe keine Frage")
 
 
-class TrashThreadView(TestCase):
+class TrashThreadTaskTests(TestCase):
     def test_trash_thread(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -389,6 +389,8 @@ class TrashThreadView(TestCase):
 
         self.assertEqual(trashed_thread.trashed, True)
 
+
+class RestoreThreadTaskTests(TestCase):
     def test_restore_thread(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -405,7 +407,7 @@ class TrashThreadView(TestCase):
         self.assertEqual(restored_thread.trashed, False)
 
 
-class TrashCommentView(TestCase):
+class TrashCommentTaskTests(TestCase):
     def test_trash_comment(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -428,6 +430,8 @@ class TrashCommentView(TestCase):
 
         self.assertEqual(trashed_comment.trashed, True)
 
+
+class RestoreCommentTaskTests(TestCase):
     def test_restore_comment(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
@@ -453,22 +457,23 @@ class TrashCommentView(TestCase):
         self.assertEqual(restored_comment.trashed, False)
 
 
-class ReplaceUserView(TestCase):
+class ReplaceUserTaskTest(TestCase):
     def test_replace_user(self):
         thread = create_thread(
             title="Antwort auf Frage XY",
             entity_id="123",
             content_provider_id="serlo",
-            user_provider_id="serlo",
+            user_provider_id="serlo-guest",
             user_id="456",
             content="Ich habe folgende Frage",
             created_at="2019-11-11 11:11:11+02:00",
         )
-
-        new_user_id = "789"
-        comments = list(thread.comment_set.all())
         author = tasks.replace_user(
-            {"anonymous_id": comments[0].author.user_id, "user_id": new_user_id}
+            {
+                "old": {"provider_id": "serlo-guest", "user_id": "456"},
+                "new": {"provider_id": "serlo", "user_id": "567"},
+            }
         )
-
-        self.assertEqual(author.user_id, new_user_id)
+        self.assertEqual(author.provider_id, "serlo")
+        self.assertEqual(author.user_id, "567")
+        self.assertEqual(author.comment_set.count(), 1)

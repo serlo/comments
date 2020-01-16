@@ -10,6 +10,7 @@ from .tasks import (
     trash_thread,
     restore_comment,
     restore_thread,
+    replace_user,
 )
 
 

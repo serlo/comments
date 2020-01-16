@@ -1,14 +1,9 @@
-from django.shortcuts import render
-from django.http import JsonResponse, HttpResponse
 from threads.models import Entity, Author, Thread, Comment
 from datetime import datetime
 
 
 def create_comment(payload):
-    author, _ = Author.objects.get_or_create(
-        user_id=payload["author"]["user_id"],
-        provider_id=payload["author"]["provider_id"],
-    )
+    author = get_author_or_create(payload["author"])
     thread = Thread.objects.get(pk=payload["thread_id"])
     thread.updated_at = payload["created_at"]
     comment = Comment.objects.create(
@@ -22,10 +17,7 @@ def create_comment(payload):
 
 
 def create_thread(payload):
-    author, _ = Author.objects.get_or_create(
-        user_id=payload["author"]["user_id"],
-        provider_id=payload["author"]["provider_id"],
-    )
+    author = get_author_or_create(payload["author"])
     entity, _ = Entity.objects.get_or_create(
         entity_id=payload["entity"]["id"], provider_id=payload["entity"]["provider_id"]
     )
@@ -35,7 +27,7 @@ def create_thread(payload):
         created_at=payload["created_at"],
         updated_at=payload["created_at"],
     )
-    comment = Comment.objects.create(
+    Comment.objects.create(
         author=author,
         content=payload["content"],
         thread=thread,
@@ -107,6 +99,15 @@ def restore_comment(payload):
 
 
 def replace_user(payload):
-    author_found = Author.objects.get(user_id=payload["anonymous_id"])
-    author_found.user_id = payload["user_id"]
-    return author_found
+    author = Author.objects.get(**payload["old"])
+    author.provider_id = payload["new"]["provider_id"]
+    author.user_id = payload["new"]["user_id"]
+    author.save()
+    return author
+
+
+def get_author_or_create(payload):
+    author, _ = Author.objects.get_or_create(
+        user_id=payload["user_id"], provider_id=payload["provider_id"],
+    )
+    return author
