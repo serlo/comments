@@ -372,6 +372,7 @@ class EditCommentTaskTests(TestCase):
         )
 
         self.assertEqual(edited_comment.content, "Ich habe keine Frage")
+        self.assertEqual(edited_comment.updated_at, "2019-11-11 11:11:12+02:00")
 
 
 class TrashThreadTaskTests(TestCase):
