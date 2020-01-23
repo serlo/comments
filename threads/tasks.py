@@ -13,27 +13,6 @@ class EntityPayload(TypedDict):
     id: str
 
 
-class CreateCommentPayload(TypedDict):
-    user: UserPayload
-    thread_id: str
-    created_at: str
-    content: str
-
-
-def create_comment(payload: CreateCommentPayload) -> Comment:
-    user = get_user_or_create(payload["user"])
-    thread = Thread.objects.get(pk=payload["thread_id"])
-    thread.updated_at = datetime_from_timestamp(payload["created_at"])
-    comment = Comment.objects.create(
-        user=user,
-        content=payload["content"],
-        thread=thread,
-        created_at=datetime_from_timestamp(payload["created_at"]),
-        updated_at=datetime_from_timestamp(payload["created_at"]),
-    )
-    return comment
-
-
 class CreateThreadPayload(TypedDict):
     user: UserPayload
     entity: EntityPayload
@@ -63,59 +42,6 @@ def create_thread(payload: CreateThreadPayload) -> Thread:
     return thread
 
 
-class CreateUserReportPayload(TypedDict):
-    user: UserPayload
-    thread_id: str
-    comment_id: str
-    created_at: str
-    description: str
-    category: str
-
-
-def create_user_report(payload: CreateUserReportPayload) -> UserReport:
-    user, _ = User.objects.get_or_create(
-        user_id=payload["user"]["user_id"], provider_id=payload["user"]["provider_id"],
-    )
-    thread = Thread.objects.get(pk=payload["thread_id"])
-    comment = (
-        Comment.objects.get(pk=payload["comment_id"]) if payload["comment_id"] else None
-    )
-    user_report = UserReport.objects.create(
-        description=payload["description"],
-        category=payload["category"],
-        user=user,
-        thread=thread,
-        comment=comment,
-        created_at=datetime.fromisoformat(payload["created_at"]),
-    )
-    return user_report
-
-
-class DeleteThreadPayload(TypedDict):
-    thread_id: str
-
-
-# TODO: Think about user reports which are depending on it!
-def delete_thread(payload: DeleteThreadPayload) -> None:
-    thread_found = Thread.objects.get(pk=payload["thread_id"])
-    thread_found.delete()
-
-
-class DeleteCommentPayload(TypedDict):
-    comment_id: str
-
-
-# TODO: Think about user reports which are depending on it!
-def delete_comment(payload: DeleteCommentPayload) -> None:
-    comment_found = Comment.objects.get(pk=payload["comment_id"])
-    comment_found.delete()
-
-
-def delete_user_report(payload) -> None:
-    user_report_found = Comment.objects.get(pk=payload["user_report_id"])
-    user_report_found.delete()
-
-
 class ArchiveThreadPayload(TypedDict):
     thread_id: str
 
@@ -138,20 +64,13 @@ def unarchive_thread(payload: UnarchiveThreadPayload) -> Thread:
     return thread_found
 
 
-class EditCommentPayload(TypedDict):
-    comment_id: str
-    content: str
-    created_at: str
+class DeleteThreadPayload(TypedDict):
+    thread_id: str
 
 
-def edit_comment(payload: EditCommentPayload) -> Comment:
-    comment_found = Comment.objects.get(pk=payload["comment_id"])
-    comment_found.content = payload["content"]
-    comment_found.updated_at = datetime_from_timestamp(payload["created_at"])
-    comment_found.save()
-    comment_found.thread.updated_at = datetime_from_timestamp(payload["created_at"])
-    comment_found.thread.save()
-    return comment_found
+def delete_thread(payload: DeleteThreadPayload) -> None:
+    thread_found = Thread.objects.get(pk=payload["thread_id"])
+    thread_found.delete()
 
 
 class TrashThreadPayload(TypedDict):
@@ -176,6 +95,43 @@ def restore_thread(payload: RestoreThreadPayload) -> Thread:
     return thread_found
 
 
+class CreateCommentPayload(TypedDict):
+    user: UserPayload
+    thread_id: str
+    created_at: str
+    content: str
+
+
+def create_comment(payload: CreateCommentPayload) -> Comment:
+    user = get_user_or_create(payload["user"])
+    thread = Thread.objects.get(pk=payload["thread_id"])
+    thread.updated_at = datetime_from_timestamp(payload["created_at"])
+    comment = Comment.objects.create(
+        user=user,
+        content=payload["content"],
+        thread=thread,
+        created_at=datetime_from_timestamp(payload["created_at"]),
+        updated_at=datetime_from_timestamp(payload["created_at"]),
+    )
+    return comment
+
+
+class EditCommentPayload(TypedDict):
+    comment_id: str
+    content: str
+    created_at: str
+
+
+def edit_comment(payload: EditCommentPayload) -> Comment:
+    comment_found = Comment.objects.get(pk=payload["comment_id"])
+    comment_found.content = payload["content"]
+    comment_found.updated_at = datetime_from_timestamp(payload["created_at"])
+    comment_found.save()
+    comment_found.thread.updated_at = datetime_from_timestamp(payload["created_at"])
+    comment_found.thread.save()
+    return comment_found
+
+
 class TrashCommentPayload(TypedDict):
     comment_id: str
 
@@ -196,6 +152,50 @@ def restore_comment(payload: RestoreCommentPayload) -> Comment:
     comment_found.trashed = False
     comment_found.save()
     return comment_found
+
+
+class DeleteCommentPayload(TypedDict):
+    comment_id: str
+
+
+def delete_comment(payload: DeleteCommentPayload) -> None:
+    comment_found = Comment.objects.get(pk=payload["comment_id"])
+    comment_found.delete()
+
+
+class CreateUserReportPayload(TypedDict):
+    user: UserPayload
+    thread_id: str
+    comment_id: str
+    created_at: str
+    description: str
+    category: str
+
+
+def create_user_report(payload: CreateUserReportPayload) -> UserReport:
+    user = get_user_or_create(payload["user"])
+    thread = Thread.objects.get(pk=payload["thread_id"])
+    comment = (
+        Comment.objects.get(pk=payload["comment_id"]) if payload["comment_id"] else None
+    )
+    user_report = UserReport.objects.create(
+        description=payload["description"],
+        category=payload["category"],
+        user=user,
+        thread=thread,
+        comment=comment,
+        created_at=datetime_from_timestamp(payload["created_at"]),
+    )
+    return user_report
+
+
+class DeleteUserReportPayload(TypedDict):
+    user_report_id: str
+
+
+def delete_user_report(payload: DeleteUserReportPayload) -> None:
+    user_report_found = Comment.objects.get(pk=payload["user_report_id"])
+    user_report_found.delete()
 
 
 class ReplaceUserPayload(TypedDict):
