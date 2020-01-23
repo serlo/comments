@@ -23,7 +23,7 @@ class Thread(models.Model):
         }
 
 
-class Author(models.Model):
+class User(models.Model):
     user_id = models.CharField(max_length=200)
     provider_id = models.CharField(max_length=200)
 
@@ -34,7 +34,7 @@ class Author(models.Model):
 class Comment(models.Model):
     created_at = models.DateTimeField()
     content = models.TextField()
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -43,5 +43,28 @@ class Comment(models.Model):
             "id": self.id,
             "content": self.content,
             "created_at": self.created_at.isoformat(timespec="seconds"),
-            "author": self.author.to_json(),
+            "user": self.user.to_json(),
+        }
+
+
+class UserReport(models.Model):
+    created_at = models.DateTimeField()
+    description = models.TextField()
+    category = models.CharField(max_length=200)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, blank=True, null=True
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    def to_json(self):
+        return {
+            "id": self.id,
+            "created_at": self.created_at.isoformat(timespec="seconds"),
+            "description": self.description,
+            "category": self.category,
+            "user": self.user.to_json(),
+            "thread": self.thread.to_json(),
+            "comment": self.comment.to_json(),
         }

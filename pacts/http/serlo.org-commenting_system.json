@@ -44,7 +44,7 @@
               {
                 "id": "ce118b6e-d8e1-11e7-9296-cec278b6b50a",
                 "content": "Ich habe folgende Frage",
-                "author": {
+                "user": {
                   "user_id": "456",
                   "provider_id": "serlo.org"
                 },

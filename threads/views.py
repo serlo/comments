@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import JsonResponse, HttpResponse
-from threads.models import Entity, Author, Thread, Comment
+from threads.models import Entity, User, Thread, Comment
 import json
 
 

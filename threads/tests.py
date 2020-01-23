@@ -1,5 +1,5 @@
 from django.test import TestCase
-from .models import Author, Entity, Thread, Comment
+from .models import User, Entity, Thread, Comment, UserReport
 from . import tasks
 from django.urls import reverse
 import json
@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 
 def create_thread(**kwargs):
-    author, _ = Author.objects.get_or_create(
+    user, _ = User.objects.get_or_create(
         user_id=kwargs["user_id"], provider_id=kwargs["user_provider_id"]
     )
     entity, _ = Entity.objects.get_or_create(
@@ -15,7 +15,7 @@ def create_thread(**kwargs):
     )
     thread = Thread.objects.create(title=kwargs["title"], entity=entity)
     comment = Comment.objects.create(
-        author=author,
+        user=user,
         content=kwargs["content"],
         thread=thread,
         created_at=datetime.fromisoformat(kwargs["created_at"]),
@@ -24,11 +24,11 @@ def create_thread(**kwargs):
 
 
 def add_comment(**kwargs):
-    author = Author.objects.create(
+    user = User.objects.create(
         user_id=kwargs["user_id"], provider_id=kwargs["user_provider_id"]
     )
     comment = Comment.objects.create(
-        author=author,
+        user=user,
         content=kwargs["content"],
         thread=kwargs["thread"],
         created_at=datetime.fromisoformat(kwargs["created_at"]),
@@ -73,7 +73,7 @@ class ThreadIndexViewTests(TestCase):
                         {
                             "id": str(test_thread_comments[0].id),
                             "content": "Ich habe folgende Frage",
-                            "author": {"user_id": "456", "provider_id": "serlo"},
+                            "user": {"user_id": "456", "provider_id": "serlo"},
                             "created_at": test_thread_comments[0]
                             .created_at.astimezone(tz=timezone.utc)
                             .isoformat(),
@@ -115,7 +115,7 @@ class ThreadIndexViewTests(TestCase):
         comment = add_comment(
             user_provider_id="serlo",
             user_id="101",
-            content="Ich habe weitere Frage",
+            content="Ich habe weitere Fragen",
             thread=test_thread,
             created_at="2019-11-11 11:11:11+02:00",
         )
@@ -136,15 +136,15 @@ class ThreadIndexViewTests(TestCase):
                         {
                             "id": str(test_thread_comments[0].id),
                             "content": "Ich habe folgende Frage",
-                            "author": {"user_id": "456", "provider_id": "serlo"},
+                            "user": {"user_id": "456", "provider_id": "serlo"},
                             "created_at": test_thread_comments[0]
                             .created_at.astimezone(tz=timezone.utc)
                             .isoformat(),
                         },
                         {
                             "id": str(comment.id),
-                            "content": "Ich habe weitere Frage",
-                            "author": {"user_id": "101", "provider_id": "serlo"},
+                            "content": "Ich habe weitere Fragen",
+                            "user": {"user_id": "101", "provider_id": "serlo"},
                             "created_at": comment.created_at.astimezone(
                                 tz=timezone.utc
                             ).isoformat(),
@@ -159,7 +159,7 @@ class CreateThreadView(TestCase):
     def test_create_thread(self):
         thread = tasks.create_thread(
             {
-                "author": {"provider_id": "serlo", "user_id": "456"},
+                "user": {"provider_id": "serlo", "user_id": "456"},
                 "entity": {"provider_id": "serlo", "id": "123"},
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",
@@ -177,7 +177,7 @@ class CreateThreadView(TestCase):
     def test_create_entity_once(self):
         tasks.create_thread(
             {
-                "author": {"provider_id": "serlo", "user_id": "456"},
+                "user": {"provider_id": "serlo", "user_id": "456"},
                 "entity": {"provider_id": "serlo", "id": "123"},
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",
@@ -186,7 +186,7 @@ class CreateThreadView(TestCase):
         )
         tasks.create_thread(
             {
-                "author": {"provider_id": "serlo", "user_id": "456"},
+                "user": {"provider_id": "serlo", "user_id": "456"},
                 "entity": {"provider_id": "serlo", "id": "123"},
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",
@@ -195,7 +195,7 @@ class CreateThreadView(TestCase):
         )
 
         Entity.objects.get(provider_id="serlo", entity_id="123")
-        Author.objects.get(provider_id="serlo", user_id="456")
+        User.objects.get(provider_id="serlo", user_id="456")
 
 
 class CreateCommentView(TestCase):
@@ -212,7 +212,7 @@ class CreateCommentView(TestCase):
         tasks.create_comment(
             {
                 "thread_id": thread.id,
-                "author": {"provider_id": "serlo", "user_id": "456"},
+                "user": {"provider_id": "serlo", "user_id": "456"},
                 "content": "Ich habe folgende Frage",
                 "created_at": "2019-11-11 11:11:11+02:00",
             }
@@ -224,6 +224,77 @@ class CreateCommentView(TestCase):
         comments = list(thread_found.comment_set.all())
         self.assertEqual(len(comments), 2)
         self.assertEqual(comments[0].content, "Ich habe folgende Frage")
+
+
+class CreateUserReportView(TestCase):
+    def test_create_user_report_with_thread(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+        tasks.create_user_report(
+            {
+                "thread_id": thread.id,
+                "comment_id": None,
+                "user": {"provider_id": "serlo", "user_id": "456"},
+                "created_at": "2019-12-12 12:12:12+02:00",
+                "description": "Thread Titel ist beleidigend",
+                "category": "OFFENSIVE",
+            }
+        )
+
+        user_report_found = UserReport.objects.get(
+            description="Thread Titel ist beleidigend"
+        )
+
+        self.assertEqual(user_report_found.description, "Thread Titel ist beleidigend")
+        self.assertEqual(user_report_found.category, "OFFENSIVE")
+        self.assertEqual(user_report_found.thread, thread)
+        self.assertEqual(user_report_found.comment, None)
+
+    def test_create_user_report_with_thread_and_comment(self):
+        thread = create_thread(
+            title="Antwort auf Frage XY",
+            entity_id="123",
+            content_provider_id="serlo",
+            user_provider_id="serlo",
+            user_id="456",
+            content="Ich habe folgende Frage",
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        comment = add_comment(
+            user_provider_id="serlo",
+            user_id="101",
+            content="Ich habe weitere Fragen",
+            thread=thread,
+            created_at="2019-11-11 11:11:11+02:00",
+        )
+
+        tasks.create_user_report(
+            {
+                "thread_id": thread.id,
+                "comment_id": comment.id,
+                "user": {"provider_id": "serlo", "user_id": "456"},
+                "created_at": "2019-12-12 12:12:12+02:00",
+                "description": "Thread Titel ist beleidigend",
+                "category": "OFFENSIVE",
+            }
+        )
+
+        user_report_found = UserReport.objects.get(
+            description="Thread Titel ist beleidigend"
+        )
+
+        self.assertEqual(user_report_found.description, "Thread Titel ist beleidigend")
+        self.assertEqual(user_report_found.category, "OFFENSIVE")
+        self.assertEqual(user_report_found.thread, thread)
+        self.assertEqual(user_report_found.comment, comment)
 
 
 class DeleteThreadView(TestCase):
@@ -265,7 +336,7 @@ class DeleteCommentView(TestCase):
         comment = add_comment(
             user_provider_id="serlo",
             user_id="101",
-            content="Ich habe weitere Frage",
+            content="Ich habe weitere Fragen",
             thread=thread,
             created_at="2019-11-11 11:11:11+02:00",
         )

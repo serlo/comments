@@ -2,7 +2,7 @@ from django.shortcuts import render
 from datetime import datetime
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
-from threads.models import Entity, Author, Thread, Comment
+from threads.models import Entity, User, Thread, Comment
 from threads.tasks import create_thread
 from threads.worker import execute_message as execute
 import json
@@ -23,7 +23,7 @@ def set_state(request):
         create_thread(
             {
                 "entity": {"provider_id": "serlo.org", "id": "234"},
-                "author": {"provider_id": "serlo.org", "user_id": "456",},
+                "user": {"provider_id": "serlo.org", "user_id": "456",},
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",

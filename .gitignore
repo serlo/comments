@@ -186,3 +186,5 @@ typings/
 # Secrets
 *.secret.*
 
+# VS Code files
+.vscode

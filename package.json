@@ -7,6 +7,7 @@
     "format": "npm-run-all format:*",
     "format:prettier": "yarn _prettier --write",
     "format:py": "docker-compose run --rm format",
+    "makemigrations": "docker-compose exec server python manage.py makemigrations",
     "test": "docker-compose exec server python manage.py test",
     "test:pact": "jest",
     "_prettier": "prettier \"*.{js,jsx,ts,tsx,json,md,yaml,yml,css,scss}\""
