@@ -4,12 +4,20 @@
   "license": "Apache-2.0",
   "author": "Serlo Education e.V.",
   "scripts": {
+    "start": "docker-compose up --detach",
+    "lint": "npm-run-all lint:*",
+    "lint:format:prettier": "yarn _prettier --check",
+    "lint:format:py": "yarn _format:py --check",
+    "lint:types": "yarn _devtools mypy --strict",
     "format": "npm-run-all format:*",
     "format:prettier": "yarn _prettier --write",
-    "format:py": "docker-compose run --rm format",
     "makemigrations": "docker-compose exec server python manage.py makemigrations",
-    "test": "docker-compose exec server python manage.py test",
+    "format:py": "yarn _devtools black . --target-version py38",
+    "test": "npm-run-all test:*",
+    "test:py": "yarn m test",
     "test:pact": "jest",
+    "m": "docker-compose exec server python manage.py",
+    "_devtools": "docker-compose run --rm devtools",
     "_prettier": "prettier \"*.{js,jsx,ts,tsx,json,md,yaml,yml,css,scss}\""
   },
   "devDependencies": {

@@ -8,7 +8,7 @@ import uuid
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("threads", "0003_autor_to_user"),
+        ("threads", "0002_autor_to_user"),
     ]
 
     operations = [

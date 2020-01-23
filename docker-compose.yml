@@ -14,10 +14,10 @@ services:
       - '8000:8000'
     depends_on:
       - migrate
-  format:
+  devtools:
     build:
       context: .
-      dockerfile: docker/format/Dockerfile
+      dockerfile: docker/devtools/Dockerfile
     volumes:
       - .:/usr/src/app
   migrate:

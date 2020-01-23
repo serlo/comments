@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from typing import Any
+
 from confluent_kafka import Consumer, KafkaException, Producer
 import django
 import os
@@ -9,7 +11,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
 django.setup()
 
 
-def main():
+def main() -> None:
     from threads.worker import execute_message
 
     consumer = Consumer(
@@ -22,7 +24,7 @@ def main():
 
     producer = Producer({"bootstrap.servers": "kafka:29092"})
 
-    def delivery_report(err, msg):
+    def delivery_report(err: Any, msg: Any) -> None:
         if err:
             sys.stderr.write("%% Message failed delivery: %s\n" % err)
         else:

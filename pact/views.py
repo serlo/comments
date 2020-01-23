@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from datetime import datetime
-from django.http import JsonResponse, HttpResponse
+from django.http import JsonResponse, HttpResponse, HttpRequest
 from django.views.decorators.csrf import csrf_exempt
 from threads.models import Entity, User, Thread, Comment
 from threads.tasks import create_thread
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
-def set_state(request):
+def set_state(request: HttpRequest) -> JsonResponse:
     data = json.loads(request.body)
     consumer = data["consumer"]
     state = data["state"]
@@ -33,7 +33,7 @@ def set_state(request):
 
 
 @csrf_exempt
-def execute_message(request):
+def execute_message(request: HttpRequest) -> JsonResponse:
     payload = json.loads(request.body)
     execute(payload)
     return JsonResponse({})
