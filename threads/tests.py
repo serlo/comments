@@ -205,6 +205,30 @@ class CreateUserReportView(TestCase):
         self.assertEqual(user_report_found.comment, comment)
 
 
+class DeleteUserReportTaskTests:
+    def test_delete_existing_user_report(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        user_report_payload: tasks.CreateUserReportPayload = {
+            "thread_id": str(thread.id),
+            "comment_id": None,
+            "user": fixtures.user_payloads[0],
+            "created_at": "2019-12-12 12:12:12+02:00",
+            "description": "Thread Titel ist beleidigend",
+            "category": "OFFENSIVE",
+        }
+        user_report = tasks.create_user_report(user_report_payload)
+        tasks.delete_user_report({"user_report_id": str(user_report.id)})
+        self.assertEqual(models.UserReport.objects.count(), 0)
+
+    def test_delete_nonexisting_user_report(self) -> None:
+        self.assertRaises(
+            models.UserReport.DoesNotExist,
+            tasks.delete_user_report,
+            {"user_report_id": "ca3a0e58-0eae-44cd-80bf-4669e2be8f70"},
+        )
+
+
 class DeleteThreadTaskTests(TestCase):
     def test_delete_existing_thread(self) -> None:
         thread = tasks.create_thread(fixtures.create_thread_payloads[0])
