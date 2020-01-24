@@ -24,6 +24,16 @@ class ThreadJson(TypedDict):
     comments: List[CommentJson]
 
 
+class UserReportJson(TypedDict):
+    id:  uuid.UUID
+    created_at: str
+    description: str
+    category: str
+    user: UserJson
+    thread: ThreadJson
+    comment: CommentJson
+
+
 class Entity(models.Model):
     entity_id = models.CharField(max_length=200)
     provider_id = models.CharField(max_length=200)
@@ -86,7 +96,7 @@ class UserReport(models.Model):
     )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
-    def to_json(self):
+    def to_json(self) -> UserReportJson:
         return {
             "id": self.id,
             "created_at": self.created_at.isoformat(timespec="seconds"),
