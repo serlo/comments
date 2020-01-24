@@ -194,7 +194,7 @@ class DeleteUserReportPayload(TypedDict):
 
 
 def delete_user_report(payload: DeleteUserReportPayload) -> None:
-    user_report_found = Comment.objects.get(pk=payload["user_report_id"])
+    user_report_found = UserReport.objects.get(pk=payload["user_report_id"])
     user_report_found.delete()
 
 
