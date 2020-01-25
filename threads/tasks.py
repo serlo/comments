@@ -1,4 +1,4 @@
-from threads.models import Entity, User, Thread, Comment, UserReport
+from threads.models import Entity, User, Thread, Comment, UserReport, Subscription
 from datetime import datetime
 from typing import TypedDict
 
@@ -39,6 +39,7 @@ def create_thread(payload: CreateThreadPayload) -> Thread:
         created_at=datetime_from_timestamp(payload["created_at"]),
         updated_at=datetime_from_timestamp(payload["created_at"]),
     )
+    get_subscription_or_create(user, thread)
     return thread
 
 
@@ -113,6 +114,7 @@ def create_comment(payload: CreateCommentPayload) -> Comment:
         created_at=datetime_from_timestamp(payload["created_at"]),
         updated_at=datetime_from_timestamp(payload["created_at"]),
     )
+    get_subscription_or_create(user, thread)
     return comment
 
 
@@ -194,7 +196,7 @@ class DeleteUserReportPayload(TypedDict):
 
 
 def delete_user_report(payload: DeleteUserReportPayload) -> None:
-    user_report_found = Comment.objects.get(pk=payload["user_report_id"])
+    user_report_found = UserReport.objects.get(pk=payload["user_report_id"])
     user_report_found.delete()
 
 
@@ -211,11 +213,36 @@ def replace_user(payload: ReplaceUserPayload) -> User:
     return user
 
 
+class CreateSubscriptionPayload(TypedDict):
+    user: UserPayload
+    thread_id: str
+
+
+def create_subscription(payload: CreateSubscriptionPayload) -> Subscription:
+    user = get_user_or_create(payload["user"])
+    thread = Thread.objects.get(pk=payload["thread_id"])
+    return get_subscription_or_create(user, thread)
+
+
+class DeleteSubscriptionPayload(TypedDict):
+    subscription_id: str
+
+
+def delete_subscription(payload: DeleteSubscriptionPayload) -> None:
+    subscription_found = Subscription.objects.get(pk=payload["subscription_id"])
+    subscription_found.delete()
+
+
 def get_user_or_create(payload: UserPayload) -> User:
     user, _ = User.objects.get_or_create(
         user_id=payload["user_id"], provider_id=payload["provider_id"],
     )
     return user
+
+
+def get_subscription_or_create(user: User, thread: Thread) -> Subscription:
+    subscription, _ = Subscription.objects.get_or_create(user=user, thread=thread)
+    return subscription
 
 
 def datetime_from_timestamp(timestamp: str) -> datetime:

@@ -152,7 +152,7 @@ class CreateCommentTaskTests(TestCase):
         self.assertEqual(comments[1].content, comment_payload["content"])
 
 
-class CreateUserReportView(TestCase):
+class CreateUserReportTaskTests(TestCase):
     def test_create_user_report_with_thread(self) -> None:
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
@@ -203,6 +203,30 @@ class CreateUserReportView(TestCase):
         self.assertEqual(user_report_found.category, user_report_payload["category"])
         self.assertEqual(user_report_found.thread, thread)
         self.assertEqual(user_report_found.comment, comment)
+
+
+class DeleteUserReportTaskTests:
+    def test_delete_existing_user_report(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        user_report_payload: tasks.CreateUserReportPayload = {
+            "thread_id": str(thread.id),
+            "comment_id": None,
+            "user": fixtures.user_payloads[0],
+            "created_at": "2019-12-12 12:12:12+02:00",
+            "description": "Thread Titel ist beleidigend",
+            "category": "OFFENSIVE",
+        }
+        user_report = tasks.create_user_report(user_report_payload)
+        tasks.delete_user_report({"user_report_id": str(user_report.id)})
+        self.assertEqual(models.UserReport.objects.count(), 0)
+
+    def test_delete_nonexisting_user_report(self) -> None:
+        self.assertRaises(
+            models.UserReport.DoesNotExist,
+            tasks.delete_user_report,
+            {"user_report_id": "ca3a0e58-0eae-44cd-80bf-4669e2be8f70"},
+        )
 
 
 class DeleteThreadTaskTests(TestCase):
@@ -393,4 +417,57 @@ class ReplaceUserTaskTest(TestCase):
             models.User.DoesNotExist,
             tasks.replace_user,
             {"old": fixtures.user_payloads[0], "new": fixtures.user_payloads[1],},
+        )
+
+
+class SubscriptionTasksTest(TestCase):
+    def test_creating_and_deleting_subscriptions(self) -> None:
+        # Create thread and check that thread creator (user_0) is subscribed to thread
+        thread = tasks.create_thread(fixtures.create_thread_payloads[0])
+        user_0 = models.User.objects.get(**fixtures.user_payloads[0])
+
+        subscription_0_found = models.Subscription.objects.get(
+            user=user_0, thread=thread
+        )
+        self.assertEqual(subscription_0_found.thread, thread)
+        self.assertEqual(subscription_0_found.user, user_0)
+
+        # Create comment and check that comment creator (user_1) is subscribed to thread
+        comment_payload: tasks.CreateCommentPayload = {
+            "user": fixtures.user_payloads[1],
+            "content": "Ich habe eine weitere Frage",
+            "thread_id": str(thread.id),
+            "created_at": "2019-11-11 11:11:11+02:00",
+        }
+        comment = tasks.create_comment(comment_payload)
+        user_1 = models.User.objects.get(**fixtures.user_payloads[1])
+
+        subscription_1_found = models.Subscription.objects.get(
+            user=user_1, thread=thread
+        )
+        self.assertEqual(subscription_1_found.thread, thread)
+        self.assertEqual(subscription_1_found.user, user_1)
+
+        # Create subscription for thread with user_2 and check subscription
+        create_subscription_payload = tasks.CreateSubscriptionPayload(
+            {"user": fixtures.user_payloads[2], "thread_id": thread.id,}
+        )
+        subscription_2 = tasks.create_subscription(create_subscription_payload)
+        user_2 = models.User.objects.get(**fixtures.user_payloads[2])
+
+        self.assertEqual(subscription_2.thread, thread)
+        self.assertEqual(subscription_2.user, user_2)
+
+        subscription_2_found = models.Subscription.objects.get(pk=subscription_2.id)
+        self.assertEqual(subscription_2_found, subscription_2)
+
+        # Delete subscription_2 from user_2
+        delete_subscription_payload = tasks.DeleteSubscriptionPayload(
+            {"subscription_id": subscription_2_found.id}
+        )
+        tasks.delete_subscription(delete_subscription_payload)
+        self.assertRaises(
+            models.Subscription.DoesNotExist,
+            models.Subscription.objects.get,
+            pk=subscription_2_found.id,
         )

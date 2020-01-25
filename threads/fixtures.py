@@ -5,6 +5,7 @@ from threads.tasks import UserPayload, CreateThreadPayload, EntityPayload
 user_payloads: List[UserPayload] = [
     {"provider_id": "serlo-user", "user_id": "1-user"},
     {"provider_id": "serlo-user", "user_id": "2-user"},
+    {"provider_id": "serlo-user", "user_id": "3-user"},
 ]
 
 entity_payloads: List[EntityPayload] = [

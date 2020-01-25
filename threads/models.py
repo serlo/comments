@@ -25,13 +25,19 @@ class ThreadJson(TypedDict):
 
 
 class UserReportJson(TypedDict):
-    id:  uuid.UUID
+    id: uuid.UUID
     created_at: str
     description: str
     category: str
     user: UserJson
     thread: ThreadJson
     comment: CommentJson
+
+
+class SubscriptionJson(TypedDict):
+    id: uuid.UUID
+    user: UserJson
+    thread: ThreadJson
 
 
 class Entity(models.Model):
@@ -105,4 +111,17 @@ class UserReport(models.Model):
             "user": self.user.to_json(),
             "thread": self.thread.to_json(),
             "comment": self.comment.to_json(),
+        }
+
+
+class Subscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    def to_json(self) -> SubscriptionJson:
+        return {
+            "id": self.id,
+            "user": self.user.to_json(),
+            "thread": self.thread.to_json(),
         }

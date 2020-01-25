@@ -15,6 +15,8 @@ from .tasks import (
     create_user_report,
     delete_user_report,
     replace_user,
+    create_subscription,
+    delete_subscription,
 )
 
 
@@ -69,5 +71,11 @@ def execute_message(data: Message) -> Message:
     if data["type"] == "replace-user":
         replace_user(data["payload"])
         return data
-
+    if data["type"] == "create-subscription":
+        subscription = create_subscription(data["payload"])
+        data["payload"]["id"] = subscription.id
+        return data
+    if data["type"] == "delete-subscription":
+        delete_subscription(data["payload"])
+        return data
     raise Exception("Invalid message")
