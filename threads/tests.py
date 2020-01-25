@@ -152,7 +152,7 @@ class CreateCommentTaskTests(TestCase):
         self.assertEqual(comments[1].content, comment_payload["content"])
 
 
-class CreateUserReportView(TestCase):
+class CreateUserReportTaskTests(TestCase):
     def test_create_user_report_with_thread(self) -> None:
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
