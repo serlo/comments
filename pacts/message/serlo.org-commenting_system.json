@@ -17,7 +17,7 @@
       "contents": {
         "type": "create-thread",
         "payload": {
-          "user": {
+          "author": {
             "provider_id": "serlo.org",
             "user_id": "456"
           },
@@ -46,8 +46,7 @@
           }
         }
       },
-      "metaData": {
-      }
+      "metaData": {}
     },
     {
       "description": "a `create-comment` message",
@@ -60,7 +59,7 @@
       "contents": {
         "type": "create-comment",
         "payload": {
-          "user": {
+          "author": {
             "provider_id": "serlo.org",
             "user_id": "456"
           },
@@ -97,8 +96,7 @@
           }
         }
       },
-      "metaData": {
-      }
+      "metaData": {}
     }
   ],
   "metadata": {

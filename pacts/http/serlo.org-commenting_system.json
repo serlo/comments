@@ -18,9 +18,7 @@
         "headers": {
           "Content-Type": "application/json"
         },
-        "body": [
-
-        ]
+        "body": []
       },
       "metadata": null
     },
@@ -44,7 +42,7 @@
               {
                 "id": "ce118b6e-d8e1-11e7-9296-cec278b6b50a",
                 "content": "Ich habe folgende Frage",
-                "user": {
+                "author": {
                   "user_id": "456",
                   "provider_id": "serlo.org"
                 },
