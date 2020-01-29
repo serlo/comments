@@ -5,7 +5,7 @@ from typing import TypedDict
 
 class UserPayload(TypedDict):
     provider_id: str
-    user_id: str
+    id: str
 
 
 class EntityPayload(TypedDict):
@@ -204,16 +204,18 @@ class ReplaceUserPayload(TypedDict):
 
 
 def replace_user(payload: ReplaceUserPayload) -> User:
-    user = User.objects.get(**payload["old"])
+    user = User.objects.get(
+        user_id=payload["old"]["id"], provider_id=payload["old"]["provider_id"]
+    )
     user.provider_id = payload["new"]["provider_id"]
-    user.user_id = payload["new"]["user_id"]
+    user.user_id = payload["new"]["id"]
     user.save()
     return user
 
 
 def get_user_or_create(payload: UserPayload) -> User:
     user, _ = User.objects.get_or_create(
-        user_id=payload["user_id"], provider_id=payload["provider_id"],
+        user_id=payload["id"], provider_id=payload["provider_id"],
     )
     return user
 

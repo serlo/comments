@@ -23,7 +23,7 @@ def set_state(request: HttpRequest) -> JsonResponse:
         create_thread(
             {
                 "entity": {"provider_id": "serlo.org", "id": "234"},
-                "user": {"provider_id": "serlo.org", "user_id": "456",},
+                "user": {"provider_id": "serlo.org", "id": "456",},
                 "created_at": datetime.now().isoformat(timespec="seconds"),
                 "title": "Antwort auf Frage XY",
                 "content": "Ich habe folgende Frage",

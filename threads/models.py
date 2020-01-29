@@ -5,7 +5,7 @@ import uuid
 
 class UserJson(TypedDict):
     provider_id: str
-    user_id: str
+    id: str
 
 
 class CommentJson(TypedDict):
@@ -25,7 +25,7 @@ class ThreadJson(TypedDict):
 
 
 class UserReportJson(TypedDict):
-    id:  uuid.UUID
+    id: uuid.UUID
     created_at: str
     description: str
     category: str
@@ -63,7 +63,7 @@ class User(models.Model):
     provider_id = models.CharField(max_length=200)
 
     def to_json(self) -> UserJson:
-        return {"provider_id": self.provider_id, "user_id": self.user_id}
+        return {"provider_id": self.provider_id, "id": self.user_id}
 
 
 class Comment(models.Model):

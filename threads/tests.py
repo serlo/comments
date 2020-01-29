@@ -128,7 +128,9 @@ class CreateThreadTaskTests(TestCase):
         payload = fixtures.create_thread_payloads[0]
         tasks.create_thread(payload)
         tasks.create_thread(payload)
-        models.User.objects.get(**payload["user"])
+        models.User.objects.get(
+            provider_id=payload["user"]["provider_id"], user_id=payload["user"]["id"],
+        )
         models.Entity.objects.get(
             provider_id=payload["entity"]["provider_id"],
             entity_id=payload["entity"]["id"],
@@ -205,7 +207,7 @@ class CreateUserReportTaskTests(TestCase):
         self.assertEqual(user_report_found.comment, comment)
 
 
-class DeleteUserReportTaskTests:
+class DeleteUserReportTaskTests(TestCase):
     def test_delete_existing_user_report(self) -> None:
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
@@ -409,7 +411,7 @@ class ReplaceUserTaskTest(TestCase):
         )
         user = models.User.objects.get(pk=user.id)
         self.assertEqual(user.provider_id, fixtures.user_payloads[1]["provider_id"])
-        self.assertEqual(user.user_id, fixtures.user_payloads[1]["user_id"])
+        self.assertEqual(user.user_id, fixtures.user_payloads[1]["id"])
         self.assertEqual(user.comment_set.count(), 1)
 
     def test_replace_nonexisting_user(self) -> None:
