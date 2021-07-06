@@ -1,10 +1,11 @@
 from typing import List
 
-from threads.tasks import AuthorPayload, CreateThreadPayload, EntityPayload
+from threads.tasks import UserPayload, CreateThreadPayload, EntityPayload
 
-author_payloads: List[AuthorPayload] = [
+user_payloads: List[UserPayload] = [
     {"provider_id": "serlo-user", "user_id": "1-user"},
     {"provider_id": "serlo-user", "user_id": "2-user"},
+    {"provider_id": "serlo-user", "user_id": "3-user"},
 ]
 
 entity_payloads: List[EntityPayload] = [
@@ -14,7 +15,7 @@ entity_payloads: List[EntityPayload] = [
 
 create_thread_payloads: List[CreateThreadPayload] = [
     {
-        "author": author_payloads[0],
+        "user": user_payloads[0],
         "entity": entity_payloads[0],
         "title": "Antwort auf Frage XY",
         "content": "Ich habe folgende Frage",

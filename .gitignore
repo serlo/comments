@@ -120,6 +120,7 @@ venv.bak/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+mypy.ini
 
 # Pyre type checker
 .pyre/
@@ -186,3 +187,5 @@ typings/
 # Secrets
 *.secret.*
 
+# VS Code files
+.vscode
