@@ -1,33 +1,33 @@
 {
   "name": "@serlo/commenting-system",
   "version": "0.0.0",
+  "private": true,
   "license": "Apache-2.0",
   "author": "Serlo Education e.V.",
   "scripts": {
-    "start": "docker-compose up --detach",
+    "start": "docker-compose up --detach --build",
     "lint": "npm-run-all lint:*",
-    "lint:format:prettier": "yarn _prettier --check",
+    "lint:format:prettier": "prettier . --check",
     "lint:format:py": "yarn _format:py --check",
     "lint:types": "yarn _devtools mypy --strict",
     "format": "npm-run-all format:*",
-    "format:prettier": "yarn _prettier --write",
+    "format:prettier": "prettier . --write",
     "format:py": "yarn _devtools black . --target-version py38",
     "test": "npm-run-all test:*",
     "test:py": "yarn m test",
     "test:pact": "jest",
     "m": "docker-compose exec server python manage.py",
-    "_devtools": "docker-compose run --rm devtools",
-    "_prettier": "prettier \"*.{js,jsx,ts,tsx,json,md,yaml,yml,css,scss}\""
+    "_devtools": "docker-compose run --rm devtools"
   },
   "devDependencies": {
     "@pact-foundation/pact": "^9.0.0",
-    "@types/jest": "^24.0.0",
-    "axios": "^0.19.0",
-    "jest": "^24.0.0",
+    "@types/jest": "^26.0.0",
+    "axios": "^0.21.0",
+    "jest": "^27.0.0",
     "npm-run-all": "^4.0.0",
-    "prettier": "^1.0.0",
-    "ts-jest": "^24.0.0",
-    "typescript": "^3.0.0"
-  },
-  "private": true
+    "prettier": "^2.0.0",
+    "prettier-plugin-packagejson": "^2.0.0",
+    "ts-jest": "^27.0.0",
+    "typescript": "^4.0.0"
+  }
 }
