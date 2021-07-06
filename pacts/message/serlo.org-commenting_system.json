@@ -46,8 +46,7 @@
           }
         }
       },
-      "metaData": {
-      }
+      "metaData": {}
     },
     {
       "description": "a `create-comment` message",
@@ -97,8 +96,7 @@
           }
         }
       },
-      "metaData": {
-      }
+      "metaData": {}
     }
   ],
   "metadata": {

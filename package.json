@@ -11,6 +11,7 @@
     "lint:types": "yarn _devtools mypy --strict",
     "format": "npm-run-all format:*",
     "format:prettier": "yarn _prettier --write",
+    "makemigrations": "yarn m makemigrations",
     "format:py": "yarn _devtools black . --target-version py38",
     "test": "npm-run-all test:*",
     "test:py": "yarn m test",

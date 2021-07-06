@@ -32,7 +32,7 @@ class ThreadIndexViewTests(TestCase):
                         {
                             "id": str(comments[0].id),
                             "content": payload["content"],
-                            "author": payload["author"],
+                            "user": payload["user"],
                             "created_at": normalize_timestamp(payload["created_at"]),
                             "updated_at": normalize_timestamp(payload["created_at"]),
                         }
@@ -51,7 +51,7 @@ class ThreadIndexViewTests(TestCase):
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
         comment_payload: tasks.CreateCommentPayload = {
-            "author": fixtures.author_payloads[1],
+            "user": fixtures.user_payloads[1],
             "content": "Ich habe eine weitere Frage",
             "thread_id": str(thread.id),
             "created_at": "2019-11-11 11:11:11+02:00",
@@ -68,7 +68,7 @@ class ThreadIndexViewTests(TestCase):
                         {
                             "id": str(comments[0].id),
                             "content": thread_payload["content"],
-                            "author": thread_payload["author"],
+                            "user": thread_payload["user"],
                             "created_at": normalize_timestamp(
                                 thread_payload["created_at"]
                             ),
@@ -79,7 +79,7 @@ class ThreadIndexViewTests(TestCase):
                         {
                             "id": str(comment.id),
                             "content": comment_payload["content"],
-                            "author": comment_payload["author"],
+                            "user": comment_payload["user"],
                             "created_at": normalize_timestamp(
                                 comment_payload["created_at"]
                             ),
@@ -124,11 +124,13 @@ class CreateThreadTaskTests(TestCase):
             list(threads[0].comment_set.all())[0].content, payload["content"]
         )
 
-    def test_create_entity_and_author_only_once(self) -> None:
+    def test_create_entity_and_user_only_once(self) -> None:
         payload = fixtures.create_thread_payloads[0]
         tasks.create_thread(payload)
         tasks.create_thread(payload)
-        models.Author.objects.get(**payload["author"])
+        models.User.objects.get(
+            provider_id=payload["user"]["provider_id"], user_id=payload["user"]["id"],
+        )
         models.Entity.objects.get(
             provider_id=payload["entity"]["provider_id"],
             entity_id=payload["entity"]["id"],
@@ -140,7 +142,7 @@ class CreateCommentTaskTests(TestCase):
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
         comment_payload: tasks.CreateCommentPayload = {
-            "author": fixtures.author_payloads[1],
+            "user": fixtures.user_payloads[1],
             "content": "Ich habe eine weitere Frage",
             "thread_id": str(thread.id),
             "created_at": "2019-11-11 11:11:11+02:00",
@@ -150,6 +152,83 @@ class CreateCommentTaskTests(TestCase):
         comments = list(thread.comment_set.all())
         self.assertEqual(len(comments), 2)
         self.assertEqual(comments[1].content, comment_payload["content"])
+
+
+class CreateUserReportTaskTests(TestCase):
+    def test_create_user_report_with_thread(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        user_report_payload: tasks.CreateUserReportPayload = {
+            "thread_id": str(thread.id),
+            "comment_id": None,
+            "user": fixtures.user_payloads[0],
+            "created_at": "2019-12-12 12:12:12+02:00",
+            "description": "Thread Titel ist beleidigend",
+            "category": "OFFENSIVE",
+        }
+        tasks.create_user_report(user_report_payload)
+        user_report_found = models.UserReport.objects.get(
+            description="Thread Titel ist beleidigend"
+        )
+        self.assertEqual(
+            user_report_found.description, user_report_payload["description"]
+        )
+        self.assertEqual(user_report_found.category, user_report_payload["category"])
+        self.assertEqual(user_report_found.thread, thread)
+        self.assertEqual(user_report_found.comment, None)
+
+    def test_create_user_report_with_thread_and_comment(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        comment_payload: tasks.CreateCommentPayload = {
+            "user": fixtures.user_payloads[1],
+            "content": "Ich habe eine weitere Frage",
+            "thread_id": str(thread.id),
+            "created_at": "2019-11-11 11:11:11+02:00",
+        }
+        comment = tasks.create_comment(comment_payload)
+        user_report_payload: tasks.CreateUserReportPayload = {
+            "thread_id": str(thread.id),
+            "comment_id": str(comment.id),
+            "user": fixtures.user_payloads[0],
+            "created_at": "2019-12-12 12:12:12+02:00",
+            "description": "Thread Titel ist beleidigend",
+            "category": "OFFENSIVE",
+        }
+        tasks.create_user_report(user_report_payload)
+        user_report_found = models.UserReport.objects.get(
+            description="Thread Titel ist beleidigend"
+        )
+        self.assertEqual(
+            user_report_found.description, user_report_payload["description"]
+        )
+        self.assertEqual(user_report_found.category, user_report_payload["category"])
+        self.assertEqual(user_report_found.thread, thread)
+        self.assertEqual(user_report_found.comment, comment)
+
+
+class DeleteUserReportTaskTests(TestCase):
+    def test_delete_existing_user_report(self) -> None:
+        thread_payload = fixtures.create_thread_payloads[0]
+        thread = tasks.create_thread(thread_payload)
+        user_report_payload: tasks.CreateUserReportPayload = {
+            "thread_id": str(thread.id),
+            "comment_id": None,
+            "user": fixtures.user_payloads[0],
+            "created_at": "2019-12-12 12:12:12+02:00",
+            "description": "Thread Titel ist beleidigend",
+            "category": "OFFENSIVE",
+        }
+        user_report = tasks.create_user_report(user_report_payload)
+        tasks.delete_user_report({"user_report_id": str(user_report.id)})
+        self.assertEqual(models.UserReport.objects.count(), 0)
+
+    def test_delete_nonexisting_user_report(self) -> None:
+        self.assertRaises(
+            models.UserReport.DoesNotExist,
+            tasks.delete_user_report,
+            {"user_report_id": "ca3a0e58-0eae-44cd-80bf-4669e2be8f70"},
+        )
 
 
 class DeleteThreadTaskTests(TestCase):
@@ -171,7 +250,7 @@ class DeleteCommentTaskTests(TestCase):
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
         comment_payload: tasks.CreateCommentPayload = {
-            "author": fixtures.author_payloads[1],
+            "user": fixtures.user_payloads[1],
             "content": "Ich habe eine weitere Frage",
             "thread_id": str(thread.id),
             "created_at": "2019-11-11 11:11:11+02:00",
@@ -224,7 +303,7 @@ class EditCommentTaskTests(TestCase):
         thread_payload = fixtures.create_thread_payloads[0]
         thread = tasks.create_thread(thread_payload)
         comment_payload: tasks.CreateCommentPayload = {
-            "author": fixtures.author_payloads[1],
+            "user": fixtures.user_payloads[1],
             "content": "Ich habe eine weitere Frage",
             "thread_id": str(thread.id),
             "created_at": "2019-11-11 11:11:11+02:00",
@@ -327,17 +406,17 @@ class RestoreCommentTaskTests(TestCase):
 class ReplaceUserTaskTest(TestCase):
     def test_replace_user(self) -> None:
         tasks.create_thread(fixtures.create_thread_payloads[0])
-        author = tasks.replace_user(
-            {"old": fixtures.author_payloads[0], "new": fixtures.author_payloads[1],}
+        user = tasks.replace_user(
+            {"old": fixtures.user_payloads[0], "new": fixtures.user_payloads[1],}
         )
-        author = models.Author.objects.get(pk=author.id)
-        self.assertEqual(author.provider_id, fixtures.author_payloads[1]["provider_id"])
-        self.assertEqual(author.user_id, fixtures.author_payloads[1]["user_id"])
-        self.assertEqual(author.comment_set.count(), 1)
+        user = models.User.objects.get(pk=user.id)
+        self.assertEqual(user.provider_id, fixtures.user_payloads[1]["provider_id"])
+        self.assertEqual(user.user_id, fixtures.user_payloads[1]["id"])
+        self.assertEqual(user.comment_set.count(), 1)
 
     def test_replace_nonexisting_user(self) -> None:
         self.assertRaises(
-            models.Author.DoesNotExist,
+            models.User.DoesNotExist,
             tasks.replace_user,
-            {"old": fixtures.author_payloads[0], "new": fixtures.author_payloads[1],},
+            {"old": fixtures.user_payloads[0], "new": fixtures.user_payloads[1],},
         )

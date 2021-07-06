@@ -3,9 +3,9 @@ from typing import List, TypedDict
 import uuid
 
 
-class AuthorJson(TypedDict):
+class UserJson(TypedDict):
     provider_id: str
-    user_id: str
+    id: str
 
 
 class CommentJson(TypedDict):
@@ -13,7 +13,7 @@ class CommentJson(TypedDict):
     content: str
     created_at: str
     updated_at: str
-    author: AuthorJson
+    user: UserJson
 
 
 class ThreadJson(TypedDict):
@@ -22,6 +22,16 @@ class ThreadJson(TypedDict):
     created_at: str
     updated_at: str
     comments: List[CommentJson]
+
+
+class UserReportJson(TypedDict):
+    id: uuid.UUID
+    created_at: str
+    description: str
+    category: str
+    user: UserJson
+    thread: ThreadJson
+    comment: CommentJson
 
 
 class Entity(models.Model):
@@ -48,12 +58,12 @@ class Thread(models.Model):
         }
 
 
-class Author(models.Model):
+class User(models.Model):
     user_id = models.CharField(max_length=200)
     provider_id = models.CharField(max_length=200)
 
-    def to_json(self) -> AuthorJson:
-        return {"provider_id": self.provider_id, "user_id": self.user_id}
+    def to_json(self) -> UserJson:
+        return {"provider_id": self.provider_id, "id": self.user_id}
 
 
 class Comment(models.Model):
@@ -61,7 +71,7 @@ class Comment(models.Model):
     updated_at = models.DateTimeField()
     content = models.TextField()
     trashed = models.BooleanField(default=False)
-    author = models.ForeignKey(Author, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
 
@@ -69,7 +79,30 @@ class Comment(models.Model):
         return {
             "id": self.id,
             "content": self.content,
-            "author": self.author.to_json(),
             "created_at": self.created_at.isoformat(timespec="seconds"),
             "updated_at": self.updated_at.isoformat(timespec="seconds"),
+            "user": self.user.to_json(),
+        }
+
+
+class UserReport(models.Model):
+    created_at = models.DateTimeField()
+    description = models.TextField()
+    category = models.CharField(max_length=200)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    thread = models.ForeignKey(Thread, on_delete=models.CASCADE)
+    comment = models.ForeignKey(
+        Comment, on_delete=models.CASCADE, blank=True, null=True
+    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+
+    def to_json(self) -> UserReportJson:
+        return {
+            "id": self.id,
+            "created_at": self.created_at.isoformat(timespec="seconds"),
+            "description": self.description,
+            "category": self.category,
+            "user": self.user.to_json(),
+            "thread": self.thread.to_json(),
+            "comment": self.comment.to_json(),
         }

@@ -41,9 +41,9 @@ test('Message Contract', async () => {
                 const message = {
                     'type': 'create-thread',
                     'payload': {
-                        'author': {
+                        'user': {
                             'provider_id': 'serlo.org',
-                            'user_id': '456'
+                            'id': '456'
                         },
                         'entity': {
                             'provider_id': 'serlo.org',
@@ -66,9 +66,9 @@ test('Message Contract', async () => {
                 const message = {
                     'type': 'create-comment',
                     'payload': {
-                        'author': {
+                        'user': {
                             'provider_id': 'serlo.org',
-                            'user_id': '456'
+                            'id': '456'
                         },
                         'thread_id': data[0].id,
                         'entity': {
