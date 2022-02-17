@@ -8,7 +8,7 @@
     "start": "docker-compose up --detach --build",
     "lint": "npm-run-all lint:*",
     "lint:format:prettier": "prettier . --check",
-    "lint:format:py": "yarn _format:py --check",
+    "lint:format:py": "yarn format:py --check",
     "lint:types": "yarn _devtools mypy --strict",
     "format": "npm-run-all format:*",
     "format:prettier": "prettier . --write",
