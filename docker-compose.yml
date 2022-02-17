@@ -29,4 +29,3 @@ services:
       - .:/usr/src/app
     depends_on:
       - db
-  
